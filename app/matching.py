@@ -1,0 +1,173 @@
+"""Filtros e as duas etapas de matching.
+
+Etapa 1 (rápida, roda em todas as vagas): similaridade de embeddings + bônus por skills/cargos.
+Etapa 2 (lenta, só top N): o modelo de chat dá nota de 0 a 100 com justificativa.
+"""
+import json
+import math
+import re
+import unicodedata
+
+from . import db, llm
+from .config import CFG
+from .sources import generic_page
+
+REMOTE_WORDS = ["remote", "remoto", "remota", "home office", "anywhere", "100% remoto", "teletrabalho"]
+NON_REMOTE_WORDS = ["hybrid", "hibrido", "presencial", "on-site", "onsite", "in-office"]
+BR_PLACES = ["br", "sao paulo", "rio de janeiro", "belo horizonte", "curitiba", "florianopolis", "porto alegre",
+             "recife", "fortaleza", "salvador", "campinas", "brasilia", "goiania"]
+FOREIGN = ["united states", "usa", "us", "u s", "canada", "mexico", "colombia", "co", "argentina", "ar", "chile",
+           "cl", "peru", "uruguay", "uy", "europe", "emea", "apac", "uk", "united kingdom", "germany", "spain",
+           "portugal", "pt", "france", "india", "ireland", "netherlands", "poland", "new york", "london",
+           "barcelona", "lisbon", "ciudad de mexico", "bogota", "buenos aires", "santiago", "manhattan"]
+# frases na descrição que indicam vaga remota quando o campo de local não diz
+DESC_REMOTE = ["100% remot", "totalmente remot", "trabalho remoto", "modelo remoto", "modalidade remota",
+               "fully remote", "remote-first", "remote first", "home office", "work from anywhere"]
+DESC_NOT_REMOTE = ["hibrid", "hybrid", "presencial", "on-site", "dias no escritorio", "days in the office"]
+
+
+def _norm(s: str) -> str:
+    s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode()
+    return re.sub(r"\s+", " ", s.lower())
+
+
+def _has_word(text: str, word: str) -> bool:
+    return re.search(rf"(?<![a-z0-9]){re.escape(_norm(word))}(?![a-z0-9])", text) is not None
+
+
+# ---------- filtros ----------
+
+def title_ok(title: str) -> bool:
+    t = _norm(title).replace(".", " ")
+    return not any(_has_word(t, w.replace(".", "")) for w in CFG.get("excluir_titulos", []))
+
+
+def location_ok(location: str, remote_flag: bool | None, description: str = "") -> bool:
+    """Vaga remota que aceita gente do Brasil. As empresas cadastradas são brasileiras ou têm operação aqui,
+    então "Remote" sem país é aceito; só rejeita quando o local aponta outro país."""
+    cfg = CFG.get("filtro_local", {})
+    loc = _norm(location)
+    accept = [_norm(a) for a in cfg.get("aceitar", [])]
+    br_terms = [a for a in accept if a not in map(_norm, REMOTE_WORDS)] + BR_PLACES
+    in_brazil = any(_has_word(loc, t) for t in br_terms)
+    foreign = any(_has_word(loc, t) for t in FOREIGN)
+    if foreign and not in_brazil:
+        return False
+    if not cfg.get("exigir_remoto", True):
+        return in_brazil or not loc
+    if remote_flag or any(_has_word(loc, w) for w in REMOTE_WORDS):
+        return True
+    if any(_has_word(loc, w) for w in NON_REMOTE_WORDS):
+        return False
+    desc = _norm(description)
+    return any(p in desc for p in DESC_REMOTE) and not any(p in desc for p in DESC_NOT_REMOTE)
+
+
+# ---------- etapa 1 ----------
+
+def _cos(a, b) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    return dot / (math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(y * y for y in b)) or 1)
+
+
+def stage1(con, profile: dict, query_text: str) -> int:
+    rows = con.execute(
+        "SELECT id, title, description FROM jobs WHERE open=1 AND embedding IS NULL"
+    ).fetchall()
+    if rows:
+        print(f"Etapa 1: gerando embeddings de {len(rows)} vagas...")
+    for i in range(0, len(rows), 32):
+        batch = rows[i:i + 32]
+        vecs = llm.embed([f"{r['title']}\n{(r['description'] or '')[:3000]}" for r in batch])
+        for r, v in zip(batch, vecs):
+            con.execute("UPDATE jobs SET embedding=? WHERE id=?", (json.dumps(v), r["id"]))
+        con.commit()
+
+    qv = llm.embed([query_text], kind="query")[0]
+    skills = [_norm(s) for s in profile.get("skills", [])]
+    titles = {w for c in profile.get("cargos", []) + profile.get("cargos_semelhantes", [])
+              for w in _norm(c).split() if len(w) > 3}
+    # vagas do mesmo nível do candidato sobem um pouco no ranking
+    level_words = {
+        "estagio": ["estagio", "estagiario", "intern", "internship"],
+        "junior": ["jr", "junior", "trainee", "entry level", "associate"],
+        "pleno": ["pleno", "pl", "mid", "mid level", "ii"],
+    }.get(_norm(profile.get("senioridade", "")), [])
+    n = 0
+    for r in con.execute("SELECT id, title, description, embedding FROM jobs WHERE open=1 AND embedding IS NOT NULL").fetchall():
+        text = _norm(f"{r['title']} {r['description'] or ''}")
+        sim = _cos(qv, json.loads(r["embedding"]))
+        skill_hits = sum(1 for s in skills if _has_word(text, s)) / max(len(skills), 1)
+        title = _norm(r["title"])
+        title_hit = 0.05 if titles & set(title.split()) else 0
+        level_hit = 0.05 if any(_has_word(title, w) for w in level_words) else 0
+        con.execute("UPDATE jobs SET stage1=? WHERE id=?",
+                    (round(sim + 0.15 * skill_hits + title_hit + level_hit, 4), r["id"]))
+        n += 1
+    con.commit()
+    return n
+
+
+# ---------- etapa 2 ----------
+
+SYSTEM = (
+    "Você é um recrutador técnico brasileiro avaliando se uma vaga combina com um candidato. "
+    "Analise com cuidado e responda só JSON com estes campos, nesta ordem:\n"
+    '"skills_em_comum": [str]  -- tecnologias exigidas pela vaga que o candidato tem\n'
+    '"skills_faltando": [str]  -- só as obrigatórias/importantes que ele não tem (máx. 6)\n'
+    '"aderencia_stack": 0-10   -- 10 = stack principal idêntica; 7 = maioria em comum; 4 = área certa, stack diferente; 0 = outra área\n'
+    '"nivel_vaga": "estagio|junior|pleno|senior|especialista"\n'
+    '"exige_ingles_fluente": true|false\n'
+    '"requisito_eliminatorio": true|false  -- algo que o candidato claramente não cumpre (ex.: formação obrigatória, certificação, 5+ anos, outra área)\n'
+    '"motivo": "1-2 frases em português explicando o encaixe"'
+)
+LEVELS = {"estagio": 0, "junior": 1, "pleno": 2, "senior": 3, "especialista": 4}
+
+
+def compute_score(res: dict, candidate_level: str) -> tuple[int, bool]:
+    """Nota final calculada a partir dos critérios (mais estável que pedir um número ao modelo)."""
+    stack = max(0, min(10, float(res.get("aderencia_stack") or 0)))
+    gap = LEVELS.get(_norm(res.get("nivel_vaga") or ""), 2) - LEVELS.get(_norm(candidate_level or ""), 1)
+    score = stack * 10
+    score -= 15 * max(gap, 0)                      # vaga acima do nível do candidato
+    score -= 15 if res.get("exige_ingles_fluente") else 0
+    score -= 30 if res.get("requisito_eliminatorio") else 0
+    return int(max(0, min(100, round(score)))), gap <= 0
+
+
+def stage2(con, profile: dict, limit: int | None = None) -> int:
+    cfg = CFG.get("matching", {})
+    limit = limit or cfg.get("top_n_ia", 40)
+    rows = con.execute(
+        "SELECT j.*, c.name AS company, c.ats FROM jobs j JOIN companies c ON c.id=j.company_id "
+        "WHERE j.open=1 AND j.score IS NULL AND j.stage1 >= ? ORDER BY j.stage1 DESC LIMIT ?",
+        (cfg.get("similaridade_minima", 0.5), limit),
+    ).fetchall()
+    candidate = (
+        f"Senioridade: {profile.get('senioridade')}\nCargos: {', '.join(profile.get('cargos', []))}\n"
+        f"Skills: {', '.join(profile.get('skills', []))}\n\nCURRÍCULO:\n{profile.get('_texto', '')[:3500]}"
+    )
+    for i, r in enumerate(rows, 1):
+        desc = r["description"] or ""
+        if not desc and r["ats"] == "generic":
+            try:
+                desc = generic_page.fetch_description(r["url"])
+                con.execute("UPDATE jobs SET description=? WHERE id=?", (desc, r["id"]))
+            except Exception:
+                pass
+        job = f"VAGA: {r['title']}\nEmpresa: {r['company']}\nLocal: {r['location']}\n\n{desc[:5000]}"
+        try:
+            res = llm.chat_json(SYSTEM, f"CANDIDATO\n{candidate}\n\n---\n\n{job}")
+            nota, level_ok = compute_score(res, profile.get("senioridade", "junior"))
+        except Exception as e:
+            print(f"  ! erro avaliando {r['title']}: {e}")
+            continue
+        missing = res.get("skills_faltando") or []
+        con.execute(
+            "UPDATE jobs SET score=?, reason=?, missing=?, seniority_ok=?, scored_at=? WHERE id=?",
+            (nota, f"[{res.get('nivel_vaga', '?')}] {res.get('motivo', '')}",
+             ", ".join(map(str, missing[:6])), int(level_ok), db.now(), r["id"]),
+        )
+        con.commit()
+        print(f"  [{i}/{len(rows)}] {nota:3d}  {r['company']} - {r['title']}")
+    return len(rows)

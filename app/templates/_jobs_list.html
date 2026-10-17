@@ -1,0 +1,17 @@
+<div class="mb-3 flex items-center justify-between text-xs text-slate-400">
+  <span>Mostrando <strong class="text-slate-200">{{ jobs|length }}</strong> vagas</span>
+</div>
+
+{% if jobs %}
+  <div class="space-y-3">
+    {% for j in jobs %}
+      {% include "_job_card.html" %}
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-10 text-center text-slate-400">
+    <p class="text-base font-medium text-slate-300">Nenhuma vaga encontrada com esses filtros.</p>
+    <p class="mt-1 text-xs">Tente diminuir a nota mínima, mudar o status ou avaliar mais vagas com a IA.</p>
+  </div>
+{% endif %}
+

@@ -1,0 +1,82 @@
+# Empresas e fontes iniciais (ats:slug  Nome).
+# Para adicionar mais: `python run.py add-empresa <url-de-carreiras | nome | ats:slug>`
+
+# --- Agregadores e Portais (Sem Login / Sem Gupy) ---
+linkedin:default                   LinkedIn (Remoto Brasil)
+github:backend-br/vagas            GitHub Backend-BR
+github:frontendbr/vagas            GitHub Frontend-BR
+github:phpdevbr/vagas              GitHub PHPDev-BR
+github:react-brasil/vagas          GitHub React-Brasil
+programathor:remoto                Programathor (Remoto)
+
+# --- Empresas Diretas (Greenhouse / Ashby / Lever / InHire) ---
+greenhouse:stone           Stone
+greenhouse:quintoandar     QuintoAndar
+greenhouse:c6bank          C6 Bank
+greenhouse:xpinc           XP Inc
+greenhouse:inter           Banco Inter
+greenhouse:btgpactual      BTG Pactual
+greenhouse:vtex            VTEX
+greenhouse:ebanx           EBANX
+greenhouse:via             Via (Casas Bahia)
+greenhouse:gympass         Wellhub (Gympass)
+greenhouse:arcoeducacao    Arco Educação
+greenhouse:jusbrasil       Jusbrasil
+greenhouse:wildlifestudios Wildlife Studios
+greenhouse:rdstation       RD Station
+greenhouse:zupinnovation   Zup Innovation
+greenhouse:bees            BEES
+greenhouse:abinbev         AB InBev / Ambev
+greenhouse:blip            Blip
+greenhouse:agibank         Agibank
+ashby:nubank               Nubank
+ashby:neon                 Neon
+ashby:trustly              Trustly
+ashby:swap                 Swap
+lever:ciandt               CI&T
+lever:swile                Swile
+lever:flashapp             Flash
+lever:objective            Objective
+lever:starkbank            Stark Bank
+lever:farfetch             Farfetch
+inhire:magalu              Magalu
+inhire:olist               Olist
+inhire:loggi               Loggi
+inhire:cora                Cora
+inhire:contaazul           Conta Azul
+inhire:sympla              Sympla
+inhire:cobli               Cobli
+inhire:tembici             Tembici
+inhire:clicksign           Clicksign
+inhire:idwall              idwall
+inhire:unico               Unico
+inhire:tractian            TRACTIAN
+inhire:zenvia              Zenvia
+inhire:tray                Tray
+inhire:dock                Dock
+inhire:celcoin             Celcoin
+inhire:foxbit              Foxbit
+inhire:kanastra            Kanastra
+inhire:justos              Justos
+inhire:daki                Daki
+inhire:alice               Alice
+inhire:linx                Linx
+inhire:zallpy              Zallpy Digital
+inhire:matera              Matera
+inhire:qitech              QI Tech
+inhire:pier                Pier Seguradora
+inhire:pravaler            Pravaler
+inhire:rocketseat          Rocketseat
+inhire:involves            Involves
+inhire:azion               Azion
+inhire:dafiti              Dafiti
+inhire:dtidigital          dti digital
+inhire:enjoei              Enjoei
+inhire:grupoboticario      Grupo Boticário
+inhire:mottu               Mottu
+inhire:neoway              Neoway
+inhire:paytrack            Paytrack
+inhire:principia           Principia
+inhire:queroeducacao       Quero Educação (Qeevo)
+inhire:venturus            Venturus
+inhire:vertigo             Vertigo Tecnologia

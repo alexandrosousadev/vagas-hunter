@@ -1,0 +1,120 @@
+{% set score = j.score %}
+{% if score is not none %}
+  {% if score >= 70 %}
+    {% set badge_bg = "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" %}
+  {% elif score >= 50 %}
+    {% set badge_bg = "bg-amber-500/15 text-amber-300 border-amber-500/30" %}
+  {% else %}
+    {% set badge_bg = "bg-rose-500/15 text-rose-300 border-rose-500/30" %}
+  {% endif %}
+{% else %}
+  {% set badge_bg = "bg-slate-800 text-slate-400 border-slate-700" %}
+{% endif %}
+
+<div id="job-{{ j.id }}" class="rounded-xl border border-slate-800 bg-slate-900/70 p-4 transition hover:border-slate-700">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div class="flex items-start gap-3.5 min-w-0">
+      <!-- Score Badge -->
+      <div class="flex flex-col items-center justify-center rounded-lg border px-2.5 py-1.5 min-w-[3.75rem] text-center {{ badge_bg }}">
+        {% if score is not none %}
+          <span class="text-lg font-bold leading-none">{{ score }}</span>
+          <span class="text-[10px] uppercase tracking-wider opacity-75 mt-0.5">IA</span>
+        {% else %}
+          <span class="text-xs font-semibold leading-none">
+            {% if j.stage1 %}{{ (j.stage1 * 100)|round|int }}%{% else %}—{% endif %}
+          </span>
+          <span class="text-[9px] uppercase tracking-wider opacity-70 mt-0.5">Emb</span>
+        {% endif %}
+      </div>
+
+      <!-- Main Info -->
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+          <span class="font-semibold text-indigo-400">{{ j.company_name }}</span>
+          <span class="rounded bg-slate-800 px-1.5 py-0.5 text-[11px] text-slate-300">{{ j.company_ats }}</span>
+          {% if j.location %}
+            <span>• {{ j.location }}</span>
+          {% endif %}
+          {% if j.first_seen %}
+            <span class="text-slate-500">• {{ j.first_seen[:10] }}</span>
+          {% endif %}
+        </div>
+
+        <h3 class="mt-1 text-base font-semibold text-slate-100 leading-snug">
+          <a href="{{ j.url }}" target="_blank" rel="noopener" class="hover:text-indigo-400 hover:underline">
+            {{ j.title }} ↗
+          </a>
+        </h3>
+
+        {% if j.reason %}
+          <p class="mt-2 text-sm text-slate-300 leading-relaxed">{{ j.reason }}</p>
+        {% endif %}
+
+        {% if j.missing %}
+          <div class="mt-2 flex flex-wrap items-center gap-1.5">
+            <span class="text-xs text-slate-400">Pode pedir:</span>
+            {% for skill in j.missing.split(",") %}
+              {% if skill.strip() %}
+                <span class="rounded-md bg-rose-950/60 border border-rose-800/40 px-2 py-0.5 text-xs text-rose-300">
+                  {{ skill.strip() }}
+                </span>
+              {% endif %}
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if j.description %}
+          <details class="mt-2.5 text-xs text-slate-400">
+            <summary class="cursor-pointer select-none font-medium text-slate-400 hover:text-slate-200">
+              Ver descrição da vaga
+            </summary>
+            <div class="mt-2 max-h-60 overflow-y-auto whitespace-pre-line rounded-lg bg-slate-950/80 p-3 text-slate-300 border border-slate-800/80">
+              {{ j.description[:3500] }}
+            </div>
+          </details>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex flex-wrap sm:flex-col items-end justify-between gap-2 shrink-0">
+      <div class="flex items-center gap-1 bg-slate-950/80 p-1 rounded-lg border border-slate-800">
+        {% for st, label, active_cls in [
+          ('nova', 'Nova', 'bg-slate-700 text-white'),
+          ('interessa', '⭐ Interessa', 'bg-amber-600/80 text-white'),
+          ('candidatei', '✅ Candidatei', 'bg-emerald-600/80 text-white'),
+          ('descartada', '✕', 'bg-rose-700/80 text-white')
+        ] %}
+          <button
+            hx-post="/jobs/{{ j.id }}/status"
+            hx-vals='{"status": "{{ st }}"}'
+            hx-target="#job-{{ j.id }}"
+            hx-swap="outerHTML"
+            title="Marcar como {{ st }}"
+            class="px-2 py-1 rounded text-xs font-medium transition {{ active_cls if j.status == st else 'text-slate-400 hover:text-slate-200 hover:bg-slate-800' }}">
+            {{ label }}
+          </button>
+        {% endfor %}
+      </div>
+
+      <div class="flex items-center gap-2">
+        {% if j.score is none %}
+          <button
+            hx-post="/jobs/{{ j.id }}/avaliar"
+            hx-target="#job-{{ j.id }}"
+            hx-swap="outerHTML"
+            hx-indicator="#spin-{{ j.id }}"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/40 bg-indigo-500/10 px-2.5 py-1 text-xs font-medium text-indigo-300 hover:bg-indigo-500/20">
+            <span>Avaliar com IA</span>
+            <span id="spin-{{ j.id }}" class="htmx-indicator animate-spin">⏳</span>
+          </button>
+        {% endif %}
+        <a href="{{ j.url }}" target="_blank" rel="noopener"
+           class="rounded-lg bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-500">
+          Abrir vaga ↗
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+

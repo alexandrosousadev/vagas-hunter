@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vagas Hunter — Painel Local</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <style>
+    .htmx-indicator { display: none; }
+    .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { display: inline-block; }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
+  <div class="mx-auto max-w-6xl px-4 py-6">
+    <!-- Top Header -->
+    <header class="flex flex-col gap-4 border-b border-slate-800 pb-5 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <div class="flex items-center gap-2.5">
+          <h1 class="text-2xl font-bold tracking-tight text-white">🎯 Vagas Hunter</h1>
+          <span class="rounded-full px-2.5 py-0.5 text-xs font-medium {{ 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' if ollama_ok else 'bg-rose-500/15 text-rose-300 border border-rose-500/30' }}">
+            {{ 'Ollama Online' if ollama_ok else 'Ollama Offline' }}
+          </span>
+        </div>
+        <p class="mt-1 text-xs text-slate-400">
+          Vagas remotas direto dos ATS das empresas ({{ stats.companies }} empresas monitoradas, sem Gupy/LinkedIn)
+        </p>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="flex flex-wrap items-center gap-2">
+        <button onclick="runAction('/acoes/avaliar', {limite: 20})"
+                class="rounded-lg border border-indigo-500/40 bg-indigo-500/10 px-3 py-2 text-xs font-semibold text-indigo-300 hover:bg-indigo-500/20">
+          ⚡ Avaliar +20 com IA
+        </button>
+        <button onclick="runAction('/acoes/coletar', {avaliar: true})"
+                class="rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-500">
+          🔄 Coletar Novas Vagas
+        </button>
+      </div>
+    </header>
+
+    <!-- Background Task Banner -->
+    <div id="task-banner" class="mt-4 hidden rounded-xl border border-indigo-500/30 bg-indigo-950/40 px-4 py-3 text-xs text-indigo-200 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="animate-spin">⏳</span>
+        <span id="task-msg">Processando...</span>
+      </div>
+      <button onclick="window.location.reload()" class="underline hover:text-white">Atualizar página</button>
+    </div>
+
+    <!-- Stats Row -->
+    <section class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-6">
+      <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+        <div class="text-xs text-slate-400">Vagas Abertas</div>
+        <div class="mt-1 text-xl font-bold text-white">{{ stats.total or 0 }}</div>
+      </div>
+      <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+        <div class="text-xs text-slate-400">Avaliadas (IA)</div>
+        <div class="mt-1 text-xl font-bold text-indigo-400">{{ stats.scored or 0 }}</div>
+      </div>
+      <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+        <div class="text-xs text-slate-400">Nota ≥ 70</div>
+        <div class="mt-1 text-xl font-bold text-emerald-400">{{ stats.high_match or 0 }}</div>
+      </div>
+      <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+        <div class="text-xs text-slate-400">⭐ Interessam</div>
+        <div class="mt-1 text-xl font-bold text-amber-400">{{ stats.interessa or 0 }}</div>
+      </div>
+      <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+        <div class="text-xs text-slate-400">✅ Candidatei</div>
+        <div class="mt-1 text-xl font-bold text-emerald-300">{{ stats.candidatei or 0 }}</div>
+      </div>
+      <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+        <div class="text-xs text-slate-400">Descartadas</div>
+        <div class="mt-1 text-xl font-bold text-slate-500">{{ stats.descartadas or 0 }}</div>
+      </div>
+    </section>
+
+    <!-- Resume Summary Collapsible -->
+    {% if profile %}
+    <details class="mt-4 rounded-xl border border-slate-800/80 bg-slate-900/40 px-4 py-2.5 text-xs text-slate-300">
+      <summary class="cursor-pointer select-none font-medium text-slate-300 hover:text-white">
+        📄 Perfil do currículo carregado ({{ profile.senioridade|upper }} • {{ profile.skills|length }} skills)
+      </summary>
+      <div class="mt-2 space-y-1.5 text-slate-400 border-t border-slate-800 pt-2">
+        <p>{{ profile.resumo }}</p>
+        <p><strong class="text-slate-200">Cargos:</strong> {{ profile.cargos|join(", ") }}</p>
+        <p><strong class="text-slate-200">Skills:</strong> {{ profile.skills|join(", ") }}</p>
+      </div>
+    </details>
+    {% endif %}
+
+    <!-- Filters Form -->
+    <form hx-get="/" hx-target="#jobs-container" hx-trigger="submit, change from:select, change from:input[type=checkbox]"
+          class="mt-5 grid grid-cols-1 gap-3 rounded-xl border border-slate-800 bg-slate-900/80 p-4 sm:grid-cols-12">
+      <div class="sm:col-span-4">
+        <label class="block text-[11px] font-medium text-slate-400 mb-1">Buscar termo (cargo, skill, empresa)</label>
+        <input type="text" name="q" value="{{ filters.q }}" placeholder="Ex: Java, Angular, PHP, Junior..."
+               hx-get="/" hx-target="#jobs-container" hx-trigger="keyup changed delay:350ms"
+               hx-include="closest form"
+               class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none" />
+      </div>
+
+      <div class="sm:col-span-2">
+        <label class="block text-[11px] font-medium text-slate-400 mb-1">Status</label>
+        <select name="status" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100">
+          <option value="ativas" {{ 'selected' if filters.status == 'ativas' }}>Ativas (não descartadas)</option>
+          <option value="nova" {{ 'selected' if filters.status == 'nova' }}>Novas</option>
+          <option value="interessa" {{ 'selected' if filters.status == 'interessa' }}>⭐ Interessa</option>
+          <option value="candidatei" {{ 'selected' if filters.status == 'candidatei' }}>✅ Já me candidatei</option>
+          <option value="descartada" {{ 'selected' if filters.status == 'descartada' }}>✕ Descartadas</option>
+          <option value="todas" {{ 'selected' if filters.status == 'todas' }}>Todas</option>
+        </select>
+      </div>
+
+      <div class="sm:col-span-2">
+        <label class="block text-[11px] font-medium text-slate-400 mb-1">Nota mínima IA</label>
+        <select name="min_score" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100">
+          <option value="0" {{ 'selected' if filters.min_score == 0 }}>Qualquer nota</option>
+          <option value="70" {{ 'selected' if filters.min_score == 70 }}>≥ 70 (Alta aderência)</option>
+          <option value="50" {{ 'selected' if filters.min_score == 50 }}>≥ 50 (Média/Alta)</option>
+          <option value="30" {{ 'selected' if filters.min_score == 30 }}>≥ 30</option>
+        </select>
+      </div>
+
+      <div class="sm:col-span-2">
+        <label class="block text-[11px] font-medium text-slate-400 mb-1">Empresa</label>
+        <select name="company_id" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100">
+          <option value="0">Todas ({{ companies|length }})</option>
+          {% for c in companies %}
+            {% if c.job_count > 0 %}
+              <option value="{{ c.id }}" {{ 'selected' if filters.company_id == c.id }}>
+                {{ c.name }} ({{ c.job_count }})
+              </option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="sm:col-span-2 flex items-end pb-1">
+        <label class="inline-flex items-center gap-2 cursor-pointer text-xs text-slate-300 select-none">
+          <input type="checkbox" name="only_scored" value="true" {{ 'checked' if filters.only_scored }}
+                 class="rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500" />
+          <span>Só avaliadas pela IA</span>
+        </label>
+      </div>
+    </form>
+
+    <!-- Jobs List -->
+    <main id="jobs-container" class="mt-5">
+      {% include "_jobs_list.html" %}
+    </main>
+  </div>
+
+  <script>
+    async function runAction(url, params) {
+      const form = new URLSearchParams(params);
+      await fetch(url, { method: 'POST', body: form });
+      pollTask();
+    }
+
+    async function pollTask() {
+      const banner = document.getElementById('task-banner');
+      const msg = document.getElementById('task-msg');
+      banner.classList.remove('hidden');
+      const timer = setInterval(async () => {
+        try {
+          const r = await fetch('/acoes/status');
+          const d = await r.json();
+          msg.textContent = d.message || 'Processando...';
+          if (!d.running) {
+            clearInterval(timer);
+            setTimeout(() => window.location.reload(), 800);
+          }
+        } catch (e) {
+          clearInterval(timer);
+        }
+      }, 1500);
+    }
+
+    {% if task.running %}
+      pollTask();
+    {% endif %}
+  </script>
+</body>
+</html>
+

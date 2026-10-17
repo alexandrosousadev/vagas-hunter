@@ -1,0 +1,62 @@
+# Configuração do vagas-hunter. Edite à vontade.
+
+curriculo: curriculo/curriculo.pdf      # PDF ou DOCX
+
+# Provedor de IA: "ollama" (local no PC) | "gemini" (nuvem grátis) | "groq" (nuvem grátis)
+# Para subir na web depois, basta mudar provedor para "gemini" (ou "groq") e preencher a chave (ou usar variável de ambiente GEMINI_API_KEY / GROQ_API_KEY)
+ia:
+  provedor: ollama
+  gemini_api_key: ""                       # crie grátis em https://aistudio.google.com/apikey
+  gemini_modelo_chat: gemini-2.5-flash
+  gemini_modelo_embed: text-embedding-004
+  groq_api_key: ""                         # crie grátis em https://console.groq.com/keys
+  groq_modelo_chat: llama-3.3-70b-versatile
+
+ollama:
+  url: http://localhost:11434
+  modelo_chat: qwen2.5:7b                # troque por qwen2.5:3b se ficar lento
+  modelo_embed: nomic-embed-text
+
+# Complementa o perfil que a IA extrai do currículo (opcional)
+perfil_extra:
+  cargos: [Desenvolvedor Full Stack, Desenvolvedor Backend, Desenvolvedor PHP, Desenvolvedor Java, Desenvolvedor Front-end]
+  skills: [PHP, Java, Angular, React, React Native, JavaScript, MySQL, PostgreSQL, Git, APIs REST]
+  senioridade: junior                    # estagio | junior | pleno | senior
+
+# Títulos com estas palavras são descartados sem gastar IA
+excluir_titulos: [senior, sênior, sr, staff, principal, lead, líder, head, manager, gerente, diretor, director, coordenador, coordenação, especialista, master, "iii", "iv"]
+
+# A vaga passa no filtro de local se a localização/modalidade contém algum destes termos
+filtro_local:
+  aceitar: [remote, remoto, remota, home office, brasil, brazil, latam, "latin america", "south america", anywhere]
+  # se aceitar contiver "brasil" mas a vaga for presencial (ex. "São Paulo - Presencial"), ela é descartada
+  exigir_remoto: true
+
+# Busca pública no LinkedIn (sem login, filtrada em Remoto no Brasil)
+linkedin:
+  ultimos_dias: 5            # ignora vagas antigas (ex. 1 semana+)
+  max_candidatos: 100        # descarta vagas com "Mais de 100/200 candidatos"
+  max_por_busca: 25
+  queries:
+    - '"Remoto" Desenvolvedor Java Junior'
+    - '"Remoto" Desenvolvedor PHP Junior'
+    - '"Remoto" Desenvolvedor Angular Junior'
+    - '"Remoto" Desenvolvedor Full Stack Junior'
+    - '"Remoto" Desenvolvedor React Junior'
+    - '"Home Office" Desenvolvedor Junior'
+    - '"Remote" Java Angular Brazil'
+    - '"Remoto" PHP Laravel'
+    - '"Remoto" Desenvolvedor Trainee'
+
+matching:
+  top_n_ia: 25               # quantas vagas (melhores na etapa 1) a IA avalia por execução
+  similaridade_minima: 0.50  # corte da etapa 1 (0 a 1)
+
+coleta:
+  auto_horas: 6              # atualiza as vagas sozinho a cada X horas enquanto o painel/servidor estiver aberto (0 = desativa)
+  intervalo_segundos: 0.4
+  timeout_segundos: 25
+
+# Empresas extras: URL da página de carreiras OU "ats:slug" (ex. greenhouse:stone)
+# Rode `python run.py importar-empresas` depois de editar.
+empresas: []
