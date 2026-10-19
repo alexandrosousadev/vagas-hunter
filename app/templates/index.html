@@ -96,58 +96,92 @@
     {% endif %}
 
     <!-- Filters Form -->
-    <form hx-get="/" hx-target="#jobs-container" hx-trigger="submit, change from:select, change from:input[type=checkbox]"
-          class="mt-5 grid grid-cols-1 gap-3 rounded-xl border border-slate-800 bg-slate-900/80 p-4 sm:grid-cols-12">
-      <div class="sm:col-span-4">
-        <label class="block text-[11px] font-medium text-slate-400 mb-1">Buscar termo (cargo, skill, empresa)</label>
-        <input type="text" name="q" value="{{ filters.q }}" placeholder="Ex: Java, Angular, PHP, Junior..."
-               hx-get="/" hx-target="#jobs-container" hx-trigger="keyup changed delay:350ms"
-               hx-include="closest form"
-               class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none" />
-      </div>
+    <form id="filters-form" hx-get="/" hx-target="#jobs-container" hx-trigger="submit, change from:select, change from:input[type=checkbox]"
+          class="mt-5 rounded-xl border border-slate-800 bg-slate-900/80 p-4 space-y-3">
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-12">
+        <div class="sm:col-span-3">
+          <label class="block text-[11px] font-medium text-slate-400 mb-1">Buscar termo (cargo, skill, empresa)</label>
+          <input type="text" name="q" value="{{ filters.q }}" placeholder="Ex: Java, Angular, PHP, Junior..."
+                 hx-get="/" hx-target="#jobs-container" hx-trigger="keyup changed delay:350ms"
+                 hx-include="closest form"
+                 class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none" />
+        </div>
 
-      <div class="sm:col-span-2">
-        <label class="block text-[11px] font-medium text-slate-400 mb-1">Status</label>
-        <select name="status" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100">
-          <option value="ativas" {{ 'selected' if filters.status == 'ativas' }}>Ativas (não descartadas)</option>
-          <option value="nova" {{ 'selected' if filters.status == 'nova' }}>Novas</option>
-          <option value="interessa" {{ 'selected' if filters.status == 'interessa' }}>⭐ Interessa</option>
-          <option value="candidatei" {{ 'selected' if filters.status == 'candidatei' }}>✅ Já me candidatei</option>
-          <option value="descartada" {{ 'selected' if filters.status == 'descartada' }}>✕ Descartadas</option>
-          <option value="todas" {{ 'selected' if filters.status == 'todas' }}>Todas</option>
-        </select>
-      </div>
-
-      <div class="sm:col-span-2">
-        <label class="block text-[11px] font-medium text-slate-400 mb-1">Nota mínima IA</label>
-        <select name="min_score" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100">
-          <option value="0" {{ 'selected' if filters.min_score == 0 }}>Qualquer nota</option>
-          <option value="70" {{ 'selected' if filters.min_score == 70 }}>≥ 70 (Alta aderência)</option>
-          <option value="50" {{ 'selected' if filters.min_score == 50 }}>≥ 50 (Média/Alta)</option>
-          <option value="30" {{ 'selected' if filters.min_score == 30 }}>≥ 30</option>
-        </select>
-      </div>
-
-      <div class="sm:col-span-2">
-        <label class="block text-[11px] font-medium text-slate-400 mb-1">Empresa</label>
-        <select name="company_id" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100">
-          <option value="0">Todas ({{ companies|length }})</option>
-          {% for c in companies %}
-            {% if c.job_count > 0 %}
-              <option value="{{ c.id }}" {{ 'selected' if filters.company_id == c.id }}>
-                {{ c.name }} ({{ c.job_count }})
+        <div class="sm:col-span-2">
+          <label class="block text-[11px] font-medium text-slate-400 mb-1">Fonte / Plataforma</label>
+          <select id="ats-select" name="ats" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100">
+            <option value="" {{ 'selected' if not filters.ats }}>Todas as fontes</option>
+            <option value="ats_direto" {{ 'selected' if filters.ats == 'ats_direto' }}>🏢 Só Sites de Empresas (ATS)</option>
+            {% for s in sources %}
+              <option value="{{ s.ats }}" {{ 'selected' if filters.ats == s.ats }}>
+                {{ s.label }} ({{ s.count }})
               </option>
-            {% endif %}
-          {% endfor %}
-        </select>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="sm:col-span-2">
+          <label class="block text-[11px] font-medium text-slate-400 mb-1">Empresa / Canal</label>
+          <select name="company_id" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100">
+            <option value="0">Todas ({{ companies|length }})</option>
+            {% for c in companies %}
+              {% if c.job_count > 0 %}
+                <option value="{{ c.id }}" {{ 'selected' if filters.company_id == c.id }}>
+                  {{ c.name }} ({{ c.job_count }})
+                </option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="sm:col-span-2">
+          <label class="block text-[11px] font-medium text-slate-400 mb-1">Status</label>
+          <select name="status" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100">
+            <option value="ativas" {{ 'selected' if filters.status == 'ativas' }}>Ativas (não descartadas)</option>
+            <option value="nova" {{ 'selected' if filters.status == 'nova' }}>Novas</option>
+            <option value="interessa" {{ 'selected' if filters.status == 'interessa' }}>⭐ Interessa</option>
+            <option value="candidatei" {{ 'selected' if filters.status == 'candidatei' }}>✅ Já me candidatei</option>
+            <option value="descartada" {{ 'selected' if filters.status == 'descartada' }}>✕ Descartadas</option>
+            <option value="todas" {{ 'selected' if filters.status == 'todas' }}>Todas</option>
+          </select>
+        </div>
+
+        <div class="sm:col-span-2">
+          <label class="block text-[11px] font-medium text-slate-400 mb-1">Nota mínima IA</label>
+          <select name="min_score" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100">
+            <option value="0" {{ 'selected' if filters.min_score == 0 }}>Qualquer nota</option>
+            <option value="70" {{ 'selected' if filters.min_score == 70 }}>≥ 70 (Alta aderência)</option>
+            <option value="50" {{ 'selected' if filters.min_score == 50 }}>≥ 50 (Média/Alta)</option>
+            <option value="30" {{ 'selected' if filters.min_score == 30 }}>≥ 30</option>
+          </select>
+        </div>
+
+        <div class="sm:col-span-1 flex items-end pb-1">
+          <label class="inline-flex items-center gap-1.5 cursor-pointer text-xs text-slate-300 select-none">
+            <input type="checkbox" name="only_scored" value="true" {{ 'checked' if filters.only_scored }}
+                   class="rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500" />
+            <span>Só IA</span>
+          </label>
+        </div>
       </div>
 
-      <div class="sm:col-span-2 flex items-end pb-1">
-        <label class="inline-flex items-center gap-2 cursor-pointer text-xs text-slate-300 select-none">
-          <input type="checkbox" name="only_scored" value="true" {{ 'checked' if filters.only_scored }}
-                 class="rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500" />
-          <span>Só avaliadas pela IA</span>
-        </label>
+      <!-- Atalhos rápidos por Fonte -->
+      <div class="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-800/80 text-xs">
+        <span class="text-slate-400 mr-1">Fonte rápida:</span>
+        <button type="button" onclick="setSource('')"
+                class="rounded-full px-2.5 py-1 transition border border-slate-700 bg-slate-800/70 text-slate-200 hover:bg-indigo-600/30 hover:border-indigo-500/50">
+          Todas
+        </button>
+        <button type="button" onclick="setSource('ats_direto')"
+                class="rounded-full px-2.5 py-1 transition border border-slate-700 bg-slate-800/70 text-slate-200 hover:bg-indigo-600/30 hover:border-indigo-500/50">
+          🏢 Só Sites de Empresas
+        </button>
+        {% for s in sources %}
+          <button type="button" onclick="setSource('{{ s.ats }}')"
+                  class="rounded-full px-2.5 py-1 transition border border-slate-700 bg-slate-800/70 text-slate-300 hover:bg-indigo-600/30 hover:border-indigo-500/50">
+            {{ s.label }} <span class="text-slate-500">({{ s.count }})</span>
+          </button>
+        {% endfor %}
       </div>
     </form>
 
@@ -158,6 +192,14 @@
   </div>
 
   <script>
+    function setSource(val) {
+      const sel = document.getElementById('ats-select');
+      if (sel) {
+        sel.value = val;
+        htmx.trigger(sel, 'change');
+      }
+    }
+
     async function runAction(url, params) {
       const form = new URLSearchParams(params);
       await fetch(url, { method: 'POST', body: form });

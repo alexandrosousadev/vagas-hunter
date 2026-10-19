@@ -55,7 +55,15 @@ app = FastAPI(title="Vagas Hunter", lifespan=lifespan)
 templates = Jinja2Templates(directory=str(Path(__file__).with_name("templates")))
 
 
-def _query_jobs(con, q: str = "", status: str = "ativas", min_score: int = 0, company_id: int = 0, only_scored: bool = False):
+def _query_jobs(
+    con,
+    q: str = "",
+    status: str = "ativas",
+    min_score: int = 0,
+    company_id: int = 0,
+    ats: str = "",
+    only_scored: bool = False,
+):
     sql = """
         SELECT j.*, c.name AS company_name, c.ats AS company_ats, c.slug AS company_slug
         FROM jobs j
@@ -80,6 +88,12 @@ def _query_jobs(con, q: str = "", status: str = "ativas", min_score: int = 0, co
     if company_id > 0:
         sql += " AND j.company_id = ?"
         params.append(company_id)
+
+    if ats == "ats_direto":
+        sql += " AND c.ats IN ('greenhouse', 'lever', 'ashby', 'workable', 'inhire', 'generic')"
+    elif ats:
+        sql += " AND c.ats = ?"
+        params.append(ats)
 
     if q.strip():
         term = f"%{q.strip()}%"
@@ -113,6 +127,20 @@ def _stats(con):
     return {**(dict(row) if row else {}), "companies": comp_count}
 
 
+SOURCE_LABELS = {
+    "linkedin": "LinkedIn (Remoto)",
+    "posts": "Posts & E-mail RH",
+    "eudev": "eu.dev.br (Júnior)",
+    "github": "GitHub Vagas BR",
+    "programathor": "Programathor",
+    "greenhouse": "Greenhouse (Site Empresa)",
+    "inhire": "InHire (Site Empresa)",
+    "lever": "Lever (Site Empresa)",
+    "ashby": "Ashby (Site Empresa)",
+    "workable": "Workable (Site Empresa)",
+}
+
+
 @app.get("/", response_class=HTMLResponse)
 def index(
     request: Request,
@@ -120,16 +148,28 @@ def index(
     status: str = Query("ativas"),
     min_score: int = Query(0),
     company_id: int = Query(0),
+    ats: str = Query(""),
     only_scored: bool = Query(False),
 ):
     con = db.connect()
-    jobs = _query_jobs(con, q=q, status=status, min_score=min_score, company_id=company_id, only_scored=only_scored)
+    jobs = _query_jobs(
+        con, q=q, status=status, min_score=min_score, company_id=company_id, ats=ats, only_scored=only_scored
+    )
     stats = _stats(con)
     comps = con.execute(
         "SELECT c.id, c.name, c.ats, COUNT(j.id) AS job_count "
         "FROM companies c LEFT JOIN jobs j ON j.company_id = c.id AND j.open = 1 "
         "WHERE c.active = 1 GROUP BY c.id ORDER BY c.name"
     ).fetchall()
+    sources_rows = con.execute(
+        "SELECT c.ats, COUNT(j.id) AS job_count "
+        "FROM companies c JOIN jobs j ON j.company_id = c.id AND j.open = 1 "
+        "WHERE c.active = 1 GROUP BY c.ats ORDER BY job_count DESC"
+    ).fetchall()
+    sources = [
+        {"ats": r["ats"], "label": SOURCE_LABELS.get(r["ats"], r["ats"].upper()), "count": r["job_count"]}
+        for r in sources_rows
+    ]
     try:
         prof = resume.get_profile() if (resume.CACHE.exists()) else {}
     except Exception:
@@ -140,6 +180,7 @@ def index(
         "jobs": jobs,
         "stats": stats,
         "companies": comps,
+        "sources": sources,
         "profile": prof,
         "ollama_ok": llm.available(),
         "task": _task_state,
@@ -148,6 +189,7 @@ def index(
             "status": status,
             "min_score": min_score,
             "company_id": company_id,
+            "ats": ats,
             "only_scored": only_scored,
         },
     }
