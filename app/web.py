@@ -2,7 +2,7 @@
 import threading
 from pathlib import Path
 
-from fastapi import FastAPI, Form, Query, Request
+from fastapi import FastAPI, File, Form, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
@@ -271,4 +271,36 @@ def add_company_route(entrada: str = Form(...), nome: str = Form("")):
         return JSONResponse({"ok": True, "id": cid, "ats": ats, "slug": slug})
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+
+
+@app.post("/curriculo/upload")
+async def upload_resume_route(arquivo: UploadFile = File(...), reavaliar: bool = Form(True)):
+    try:
+        data = await arquivo.read()
+        filename = arquivo.filename or "curriculo.pdf"
+        prof = resume.save_uploaded_resume(filename, data)
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+
+    def _worker():
+        _task_state["running"] = True
+        try:
+            _task_state["message"] = f"Currículo '{filename}' carregado! Recalculando aderência das vagas..."
+            con = db.connect()
+            con.execute("UPDATE jobs SET score=NULL, reason=NULL, missing=NULL, seniority_ok=NULL")
+            con.commit()
+            from . import matching
+            matching.stage1(con, prof, resume.profile_query_text(prof))
+            if reavaliar and llm.available():
+                _task_state["message"] = "Avaliando as melhores vagas para o novo currículo com a IA..."
+                matching.stage2(con, prof, limit=15)
+            _task_state["message"] = "Pronto! Ranking atualizado para o novo currículo."
+        except Exception as e:
+            _task_state["message"] = f"Erro ao recalcular: {e}"
+        finally:
+            _task_state["running"] = False
+
+    threading.Thread(target=_worker, daemon=True).start()
+    return JSONResponse({"ok": True, "message": "Currículo enviado! Atualizando vagas..."})
+
 

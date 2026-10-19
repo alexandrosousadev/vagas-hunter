@@ -71,38 +71,51 @@ def _cos(a, b) -> float:
 
 
 def stage1(con, profile: dict, query_text: str) -> int:
-    rows = con.execute(
-        "SELECT id, title, description FROM jobs WHERE open=1 AND embedding IS NULL"
-    ).fetchall()
-    if rows:
-        print(f"Etapa 1: gerando embeddings de {len(rows)} vagas...")
-    for i in range(0, len(rows), 32):
-        batch = rows[i:i + 32]
-        vecs = llm.embed([f"{r['title']}\n{(r['description'] or '')[:3000]}" for r in batch])
-        for r, v in zip(batch, vecs):
-            con.execute("UPDATE jobs SET embedding=? WHERE id=?", (json.dumps(v), r["id"]))
-        con.commit()
+    llm_ok = llm.available()
+    qv = None
+    if llm_ok:
+        rows = con.execute(
+            "SELECT id, title, description FROM jobs WHERE open=1 AND embedding IS NULL"
+        ).fetchall()
+        if rows:
+            print(f"Etapa 1: gerando embeddings de {len(rows)} vagas...")
+        for i in range(0, len(rows), 32):
+            batch = rows[i:i + 32]
+            vecs = llm.embed([f"{r['title']}\n{(r['description'] or '')[:3000]}" for r in batch])
+            for r, v in zip(batch, vecs):
+                con.execute("UPDATE jobs SET embedding=? WHERE id=?", (json.dumps(v), r["id"]))
+            con.commit()
+        try:
+            qv = llm.embed([query_text], kind="query")[0]
+        except Exception:
+            qv = None
 
-    qv = llm.embed([query_text], kind="query")[0]
     skills = [_norm(s) for s in profile.get("skills", [])]
     titles = {w for c in profile.get("cargos", []) + profile.get("cargos_semelhantes", [])
               for w in _norm(c).split() if len(w) > 3}
-    # vagas do mesmo nível do candidato sobem um pouco no ranking
     level_words = {
         "estagio": ["estagio", "estagiario", "intern", "internship"],
         "junior": ["jr", "junior", "trainee", "entry level", "associate"],
         "pleno": ["pleno", "pl", "mid", "mid level", "ii"],
+        "senior": ["senior", "sr", "staff", "lead", "principal"],
     }.get(_norm(profile.get("senioridade", "")), [])
     n = 0
-    for r in con.execute("SELECT id, title, description, embedding FROM jobs WHERE open=1 AND embedding IS NOT NULL").fetchall():
+    for r in con.execute("SELECT id, title, description, embedding FROM jobs WHERE open=1").fetchall():
         text = _norm(f"{r['title']} {r['description'] or ''}")
-        sim = _cos(qv, json.loads(r["embedding"]))
+        sim = 0.55
+        if qv and r["embedding"]:
+            try:
+                emb = json.loads(r["embedding"])
+                if len(emb) == len(qv):
+                    sim = _cos(qv, emb)
+            except Exception:
+                pass
         skill_hits = sum(1 for s in skills if _has_word(text, s)) / max(len(skills), 1)
         title = _norm(r["title"])
-        title_hit = 0.05 if titles & set(title.split()) else 0
-        level_hit = 0.05 if any(_has_word(title, w) for w in level_words) else 0
+        title_hit = 0.08 if titles & set(title.split()) else 0
+        level_hit = 0.07 if any(_has_word(title, w) for w in level_words) else 0
         con.execute("UPDATE jobs SET stage1=? WHERE id=?",
-                    (round(sim + 0.15 * skill_hits + title_hit + level_hit, 4), r["id"]))
+                    (round(sim + 0.25 * skill_hits + title_hit + level_hit, 4), r["id"]))
         n += 1
     con.commit()
     return n
