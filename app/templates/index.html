@@ -53,32 +53,32 @@
       <button onclick="window.location.reload()" class="underline hover:text-white">Atualizar página</button>
     </div>
 
-    <!-- Stats Row -->
+    <!-- Stats Row (Clicáveis para filtrar) -->
     <section class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-6">
-      <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+      <button type="button" onclick="setStatus('ativas')" class="text-left rounded-xl border border-slate-800 bg-slate-900/60 p-3 hover:border-slate-600 transition">
         <div class="text-xs text-slate-400">Vagas Abertas</div>
         <div class="mt-1 text-xl font-bold text-white">{{ stats.total or 0 }}</div>
-      </div>
-      <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+      </button>
+      <button type="button" onclick="setStatus('ativas', 0, true)" class="text-left rounded-xl border border-slate-800 bg-slate-900/60 p-3 hover:border-indigo-500/50 transition">
         <div class="text-xs text-slate-400">Avaliadas (IA)</div>
         <div class="mt-1 text-xl font-bold text-indigo-400">{{ stats.scored or 0 }}</div>
-      </div>
-      <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+      </button>
+      <button type="button" onclick="setStatus('ativas', 70)" class="text-left rounded-xl border border-slate-800 bg-slate-900/60 p-3 hover:border-emerald-500/50 transition">
         <div class="text-xs text-slate-400">Nota ≥ 70</div>
         <div class="mt-1 text-xl font-bold text-emerald-400">{{ stats.high_match or 0 }}</div>
-      </div>
-      <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+      </button>
+      <button type="button" onclick="setStatus('interessa')" class="text-left rounded-xl border border-slate-800 bg-slate-900/60 p-3 hover:border-amber-500/50 transition">
         <div class="text-xs text-slate-400">⭐ Interessam</div>
         <div class="mt-1 text-xl font-bold text-amber-400">{{ stats.interessa or 0 }}</div>
-      </div>
-      <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+      </button>
+      <button type="button" onclick="setStatus('candidatei')" class="text-left rounded-xl border border-slate-800 bg-slate-900/60 p-3 hover:border-emerald-500/50 transition">
         <div class="text-xs text-slate-400">✅ Candidatei</div>
         <div class="mt-1 text-xl font-bold text-emerald-300">{{ stats.candidatei or 0 }}</div>
-      </div>
-      <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+      </button>
+      <button type="button" onclick="setStatus('descartada')" class="text-left rounded-xl border border-slate-800 bg-slate-900/60 p-3 hover:border-rose-500/50 transition">
         <div class="text-xs text-slate-400">Descartadas</div>
         <div class="mt-1 text-xl font-bold text-slate-500">{{ stats.descartadas or 0 }}</div>
-      </div>
+      </button>
     </section>
 
     <!-- Resume Summary Collapsible -->
@@ -136,9 +136,9 @@
 
         <div class="sm:col-span-2">
           <label class="block text-[11px] font-medium text-slate-400 mb-1">Status</label>
-          <select name="status" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100">
-            <option value="ativas" {{ 'selected' if filters.status == 'ativas' }}>Ativas (não descartadas)</option>
-            <option value="nova" {{ 'selected' if filters.status == 'nova' }}>Novas</option>
+          <select id="status-select" name="status" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100">
+            <option value="ativas" {{ 'selected' if filters.status == 'ativas' }}>Para avaliar (Novas + ⭐)</option>
+            <option value="nova" {{ 'selected' if filters.status == 'nova' }}>Só Novas</option>
             <option value="interessa" {{ 'selected' if filters.status == 'interessa' }}>⭐ Interessa</option>
             <option value="candidatei" {{ 'selected' if filters.status == 'candidatei' }}>✅ Já me candidatei</option>
             <option value="descartada" {{ 'selected' if filters.status == 'descartada' }}>✕ Descartadas</option>
@@ -148,7 +148,7 @@
 
         <div class="sm:col-span-2">
           <label class="block text-[11px] font-medium text-slate-400 mb-1">Nota mínima IA</label>
-          <select name="min_score" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100">
+          <select id="score-select" name="min_score" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100">
             <option value="0" {{ 'selected' if filters.min_score == 0 }}>Qualquer nota</option>
             <option value="70" {{ 'selected' if filters.min_score == 70 }}>≥ 70 (Alta aderência)</option>
             <option value="50" {{ 'selected' if filters.min_score == 50 }}>≥ 50 (Média/Alta)</option>
@@ -158,7 +158,7 @@
 
         <div class="sm:col-span-1 flex items-end pb-1">
           <label class="inline-flex items-center gap-1.5 cursor-pointer text-xs text-slate-300 select-none">
-            <input type="checkbox" name="only_scored" value="true" {{ 'checked' if filters.only_scored }}
+            <input id="scored-check" type="checkbox" name="only_scored" value="true" {{ 'checked' if filters.only_scored }}
                    class="rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500" />
             <span>Só IA</span>
           </label>
@@ -198,6 +198,16 @@
         sel.value = val;
         htmx.trigger(sel, 'change');
       }
+    }
+
+    function setStatus(st, minScore = 0, onlyScored = false) {
+      const stSel = document.getElementById('status-select');
+      const scSel = document.getElementById('score-select');
+      const chk = document.getElementById('scored-check');
+      if (stSel) stSel.value = st;
+      if (scSel) scSel.value = String(minScore);
+      if (chk) chk.checked = Boolean(onlyScored);
+      if (stSel) htmx.trigger(stSel, 'change');
     }
 
     async function runAction(url, params) {

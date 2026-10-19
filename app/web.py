@@ -73,7 +73,7 @@ def _query_jobs(
     params = []
 
     if status == "ativas":
-        sql += " AND j.status != 'descartada'"
+        sql += " AND j.status IN ('nova', 'interessa')"
     elif status != "todas":
         sql += " AND j.status = ?"
         params.append(status)
