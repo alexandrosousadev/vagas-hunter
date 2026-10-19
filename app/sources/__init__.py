@@ -1,4 +1,19 @@
-from . import ashby, eudev, generic_page, github_vagas, greenhouse, inhire, lever, linkedin, posts_web, programathor, workable
+from . import (
+    ashby,
+    eudev,
+    generic_page,
+    github_vagas,
+    greenhouse,
+    inhire,
+    jobicy,
+    lever,
+    linkedin,
+    posts_web,
+    programathor,
+    remotive,
+    vagascom,
+    workable,
+)
 
 # ATS com API JSON por slug (ordem usada ao sondar um nome de empresa)
 ATS = {
@@ -14,6 +29,9 @@ EXTRA_SOURCES = {
     "linkedin": linkedin,
     "eudev": eudev,
     "posts": posts_web,
+    "vagascom": vagascom,
+    "jobicy": jobicy,
+    "remotive": remotive,
     "github": github_vagas,
     "programathor": programathor,
     "generic": generic_page,

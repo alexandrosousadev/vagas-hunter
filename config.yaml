@@ -34,19 +34,19 @@ filtro_local:
 
 # Busca pública no LinkedIn (sem login, filtrada em Remoto no Brasil)
 linkedin:
-  ultimos_dias: 5            # ignora vagas antigas (ex. 1 semana+)
-  max_candidatos: 100        # descarta vagas com "Mais de 100/200 candidatos"
+  ultimos_dias: 7            # vagas publicadas na última semana
+  max_candidatos: 150        # descarta vagas super concorridas
   max_por_busca: 25
   queries:
-    - '"Remoto" Desenvolvedor Java Junior'
-    - '"Remoto" Desenvolvedor PHP Junior'
-    - '"Remoto" Desenvolvedor Angular Junior'
-    - '"Remoto" Desenvolvedor Full Stack Junior'
-    - '"Remoto" Desenvolvedor React Junior'
-    - '"Home Office" Desenvolvedor Junior'
-    - '"Remote" Java Angular Brazil'
-    - '"Remoto" PHP Laravel'
-    - '"Remoto" Desenvolvedor Trainee'
+    - 'Desenvolvedor Java Junior'
+    - 'Desenvolvedor PHP'
+    - 'Desenvolvedor Angular'
+    - 'Desenvolvedor Full Stack Junior'
+    - 'Desenvolvedor React Junior'
+    - 'Desenvolvedor Backend Junior'
+    - 'Desenvolvedor Front-end Junior'
+    - 'Java Angular'
+    - 'PHP Laravel'
 
 matching:
   top_n_ia: 25               # quantas vagas (melhores na etapa 1) a IA avalia por execução

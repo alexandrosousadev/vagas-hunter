@@ -5,11 +5,21 @@
 linkedin:default                   LinkedIn (Remoto Brasil)
 eudev:junior-remoto                eu.dev.br (Júnior Remoto BR)
 posts:default                      Posts & E-mail RH (Feed/Web)
+vagascom:remoto                    Vagas.com.br (100% Home Office)
+programathor:remoto                Programathor (Remoto)
+jobicy:brazil                      Jobicy (Remoto Brasil & LATAM)
+remotive:default                   Remotive (Remoto Global/LATAM)
 github:backend-br/vagas            GitHub Backend-BR
 github:frontendbr/vagas            GitHub Frontend-BR
 github:phpdevbr/vagas              GitHub PHPDev-BR
 github:react-brasil/vagas          GitHub React-Brasil
-programathor:remoto                Programathor (Remoto)
+github:soujava/vagas-java          GitHub SouJava Vagas
+github:androiddevbr/vagas          GitHub Android/Mobile BR
+github:qa-brasil/vagas             GitHub QA-Brasil
+github:datascience-br/vagas        GitHub DataScience-BR
+github:devops-br/vagas             GitHub DevOps-BR
+github:dotnetdevbr/vagas           GitHub DotNet-BR
+github:flutter-brazil/vagas        GitHub Flutter-Brazil
 
 # --- Empresas Diretas (Greenhouse / Ashby / Lever / InHire) ---
 greenhouse:stone           Stone

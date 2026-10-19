@@ -7,7 +7,11 @@ from selectolax.lexbor import LexborHTMLParser as HTMLParser
 
 from ..config import CFG
 
-UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) vagas-hunter/1.0 (uso pessoal)"
+UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/131.0.0.0 Safari/537.36"
+)
 
 
 @dataclass
@@ -22,7 +26,14 @@ class Job:
 
 def client() -> httpx.Client:
     timeout = CFG.get("coleta", {}).get("timeout_segundos", 25)
-    return httpx.Client(headers={"User-Agent": UA}, timeout=timeout, follow_redirects=True)
+    return httpx.Client(
+        headers={
+            "User-Agent": UA,
+            "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+        },
+        timeout=timeout,
+        follow_redirects=True,
+    )
 
 
 def html_to_text(raw: str) -> str:

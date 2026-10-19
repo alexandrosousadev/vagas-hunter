@@ -160,7 +160,7 @@ def dedup_key(title: str, company_name: str = "") -> str:
     clean_title = " ".join(s.split())
 
     comp = unicodedata.normalize("NFKD", company_name or "").encode("ascii", "ignore").decode().lower()
-    if any(ag in comp for ag in ("github", "linkedin", "programathor", "eu.dev", "posts")):
+    if any(ag in comp for ag in ("github", "linkedin", "programathor", "eu.dev", "posts", "vagas.com", "jobicy", "remotive")):
         return clean_title
     clean_comp = re.sub(r"[^a-z0-9]+", " ", comp).strip()
     if clean_comp and clean_comp not in clean_title:
@@ -203,6 +203,10 @@ def save_jobs(con, company_id: int, jobs: list) -> int:
     ts = now()
     new = 0
     seen = []
+    comp_row = con.execute("SELECT ats FROM companies WHERE id=?", (company_id,)).fetchone()
+    ats = comp_row["ats"] if comp_row else ""
+    is_search_aggregator = ats in ("linkedin", "posts", "vagascom", "programathor", "eudev", "jobicy", "remotive")
+
     for j in jobs:
         jid = job_id(j.url)
         seen.append(jid)
@@ -214,11 +218,12 @@ def save_jobs(con, company_id: int, jobs: list) -> int:
                 (jid, company_id, j.title, j.url, j.location, j.description, j.posted_at, ts, ts),
             )
             new += 1
-    if seen:
+
+    # Só fecha vagas que sumiram quando a fonte retornou resultados e é um ATS de lista completa
+    if seen and not is_search_aggregator:
         marks = ",".join("?" * len(seen))
         con.execute(f"UPDATE jobs SET open=0 WHERE company_id=? AND id NOT IN ({marks})", (company_id, *seen))
-    else:
-        con.execute("UPDATE jobs SET open=0 WHERE company_id=?", (company_id,))
+
     con.execute("UPDATE companies SET last_fetched=?, last_error=NULL WHERE id=?", (ts, company_id))
     con.commit()
     deduplicate_open_jobs(con)

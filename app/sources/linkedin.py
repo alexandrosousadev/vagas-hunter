@@ -17,14 +17,15 @@ SEARCH_URL = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/se
 DETAIL_URL = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{}"
 
 DEFAULT_QUERIES = [
-    '"Remoto" Desenvolvedor Java Junior',
-    '"Remoto" Desenvolvedor PHP Junior',
-    '"Remoto" Desenvolvedor Angular Junior',
-    '"Remoto" Desenvolvedor Full Stack Junior',
-    '"Remoto" Desenvolvedor React Junior',
-    '"Home Office" Desenvolvedor Junior',
-    '"Remote" Java Angular Brazil',
-    '"Remoto" PHP Laravel',
+    "Desenvolvedor Java Junior",
+    "Desenvolvedor PHP",
+    "Desenvolvedor Angular",
+    "Desenvolvedor Full Stack Junior",
+    "Desenvolvedor React Junior",
+    "Desenvolvedor Backend Junior",
+    "Desenvolvedor Front-end Junior",
+    "Java Angular",
+    "PHP Laravel",
 ]
 
 # Palavras que confirmam que a vaga é remota
@@ -63,7 +64,7 @@ def _is_truly_remote(title: str, location: str, desc: str) -> bool:
         return True
 
     # Se a localização do card é genérica "Brazil" ou "Brasil" (sem cidade específica) e não tem indício presencial, aceita
-    if loc_low.strip() in ("brazil", "brasil", "remote", "remoto"):
+    if loc_low.strip() in ("brazil", "brasil", "remote", "remoto", "latin america", "latam"):
         return True
 
     # Caso contrário (tem cidade específica como "Assis, São Paulo, Brazil" e não menciona remoto em lugar nenhum da descrição), é vaga presencial!
@@ -85,18 +86,19 @@ def _parse_applicants(text: str) -> tuple[int | None, bool]:
     return n, is_over
 
 
-def _fetch_detail(c, job_id: str) -> tuple[str, int | None, bool, str]:
-    for attempt in range(3):
+def _fetch_detail(c, job_id: str) -> tuple[str, int | None, bool, str, bool]:
+    """Retorna (desc, num_app, is_over, ago_txt, is_closed)."""
+    for attempt in range(2):
         try:
             r = c.get(DETAIL_URL.format(job_id))
             if r.status_code == 429:
-                time.sleep(1.3 * (attempt + 1))
+                time.sleep(1.5 * (attempt + 1))
                 continue
             if r.status_code != 200:
-                return "", None, False, ""
+                return "", None, False, "", False
             tree = HTMLParser(r.text)
             if tree.css_first(".closed-job__flavor--closed") or "no longer accepting applications" in r.text.lower():
-                return "", None, False, ""
+                return "", None, False, "", True
             desc_node = tree.css_first(".show-more-less-html__markup") or tree.css_first(".description__text")
             desc = html_to_text(desc_node.html) if desc_node else ""
 
@@ -107,14 +109,14 @@ def _fetch_detail(c, job_id: str) -> tuple[str, int | None, bool, str]:
             ago_node = tree.css_first(".posted-time-ago__text")
             ago_txt = ago_node.text(strip=True) if ago_node else ""
 
-            return desc, num_app, is_over, ago_txt
+            return desc, num_app, is_over, ago_txt, False
         except Exception:
-            return "", None, False, ""
-    return "", None, False, ""
+            return "", None, False, "", False
+    return "", None, False, "", False
 
 
 def _queries_from_profile() -> list[str]:
-    """Monta buscas dinâmicas no LinkedIn a partir dos cargos e skills do currículo ativo."""
+    """Monta buscas dinâmicas no LinkedIn a partir dos cargos e skills do currículo ativo (sem exigir aspas literais)."""
     try:
         from .. import resume
         prof = resume.get_profile()
@@ -126,15 +128,15 @@ def _queries_from_profile() -> list[str]:
     queries: list[str] = []
     for role in (cargos + semelhantes)[:6]:
         r = role.strip()
-        if r and f'"Remoto" {r}' not in queries:
-            queries.append(f'"Remoto" {r}')
+        if r and r not in queries:
+            queries.append(r)
     if cargos and skills:
         main_role = cargos[0].split()[0]
-        for sk in skills[:3]:
-            q = f'"Remoto" {main_role} {sk}'
+        for sk in skills[:4]:
+            q = f"{main_role} {sk}"
             if q not in queries:
                 queries.append(q)
-    return queries[:8]
+    return queries[:9]
 
 
 def fetch(slug: str) -> list[Job]:
@@ -147,8 +149,8 @@ def fetch(slug: str) -> list[Job]:
         queries = prof_queries or li_cfg.get("queries") or DEFAULT_QUERIES
 
     max_per_query = int(li_cfg.get("max_por_busca", 25))
-    max_days = int(li_cfg.get("ultimos_dias", 5))
-    max_applicants = int(li_cfg.get("max_candidatos", 100))
+    max_days = int(li_cfg.get("ultimos_dias", 7))
+    max_applicants = int(li_cfg.get("max_candidatos", 150))
     exclude_companies = [
         x.lower()
         for x in li_cfg.get(
@@ -171,11 +173,18 @@ def fetch(slug: str) -> list[Job]:
                 "f_TPR": f"r{only_recent_seconds}",
                 "start": 0,
             }
-            try:
-                r = c.get(SEARCH_URL, params=params)
-                if r.status_code != 200:
-                    continue
-            except Exception:
+            r = None
+            for attempt in range(2):
+                try:
+                    r = c.get(SEARCH_URL, params=params)
+                    if r.status_code == 429:
+                        time.sleep(2.0 * (attempt + 1))
+                        continue
+                    break
+                except Exception:
+                    r = None
+                    break
+            if not r or r.status_code != 200:
                 continue
 
             tree = HTMLParser(r.text)
@@ -228,10 +237,16 @@ def fetch(slug: str) -> list[Job]:
 
         jobs: list[Job] = []
         for item in filtered_cards:
-            desc, num_app, is_over, ago_txt = _fetch_detail(c, item["jid"])
-            time.sleep(0.35)
-            if not desc:
+            desc, num_app, is_over, ago_txt, is_closed = _fetch_detail(c, item["jid"])
+            time.sleep(0.45)
+            if is_closed:
                 continue
+            if not desc:
+                # Se o LinkedIn deu rate-limit (429) no detalhe, só mantém se o próprio card confirmar remoto/Brasil
+                if _is_truly_remote(item["title"], item["raw_loc"], ""):
+                    desc = f"Vaga remota no LinkedIn: {item['title']} — Local: {item['raw_loc']}"
+                else:
+                    continue
 
             # Confirma se a vaga é realmente remota (evita vagas presenciais com tag errada no LinkedIn)
             if not _is_truly_remote(item["title"], item["raw_loc"], desc):
