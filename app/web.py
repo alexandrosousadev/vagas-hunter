@@ -250,6 +250,19 @@ def logout_route():
     return resp
 
 
+@app.post("/conta/senha")
+def change_password_route(request: Request, nova_senha: str = Form(...)):
+    user = _current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "error": "Não autenticado"}, status_code=401)
+    if len(nova_senha.strip()) < 4:
+        return JSONResponse({"ok": False, "error": "A senha deve ter pelo menos 4 caracteres."}, status_code=400)
+    con = db.connect()
+    con.execute("UPDATE users SET password_hash = ? WHERE id = ?", (db.hash_password(nova_senha.strip()), user[0]))
+    con.commit()
+    return JSONResponse({"ok": True, "message": "Senha alterada com sucesso!"})
+
+
 @app.get("/", response_class=HTMLResponse)
 def index(
     request: Request,

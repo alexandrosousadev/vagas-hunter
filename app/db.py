@@ -103,23 +103,31 @@ def parse_session_token(token: str | None) -> tuple[int, str] | None:
 
 
 def _ensure_default_user(con: sqlite3.Connection):
-    """Garante que a conta padrão 'alexandro' (id=1) exista e tenha as notas/status iniciais migrados."""
+    """Garante que a conta principal (id=1) exista e tenha as notas/status iniciais migrados."""
+    env_pw = os.getenv("DEFAULT_ADMIN_PASSWORD", "").strip()
+    env_user = os.getenv("DEFAULT_ADMIN_USER", "alexandro").strip().lower()
     row = con.execute("SELECT id FROM users WHERE id=1").fetchone()
     if not row:
-        default_pw = os.getenv("DEFAULT_ADMIN_PASSWORD", "123456")
+        # Hash PBKDF2 inicial caso DEFAULT_ADMIN_PASSWORD não esteja definida no ambiente
+        pw_hash = hash_password(env_pw) if env_pw else "7dc5ef7bc2c79d69013fb364042ca806f565a1a6fe3f957a29970a1b179d9562"
         prof_path = DATA / "perfil.json"
         prof_txt = prof_path.read_text(encoding="utf-8") if prof_path.exists() else None
         con.execute(
             "INSERT INTO users(id, username, password_hash, profile_json, created_at) VALUES (1, ?, ?, ?, ?)",
-            ("alexandro", hash_password(default_pw), prof_txt, now()),
+            (env_user, pw_hash, prof_txt, now()),
         )
-        # Migra todas as notas e status existentes na tabela jobs para o usuário 1 (alexandro)
         con.execute("""
             INSERT OR IGNORE INTO user_jobs(user_id, job_id, stage1, score, reason, missing, seniority_ok, scored_at, status)
             SELECT 1, id, stage1, score, reason, missing, seniority_ok, scored_at, COALESCE(status, 'nova')
             FROM jobs
             WHERE stage1 IS NOT NULL OR score IS NOT NULL OR status != 'nova'
         """)
+        con.commit()
+    elif env_pw:
+        con.execute(
+            "UPDATE users SET username=?, password_hash=? WHERE id=1",
+            (env_user, hash_password(env_pw)),
+        )
         con.commit()
 
 
