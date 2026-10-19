@@ -68,6 +68,61 @@ def upsert_company(con, name, ats, slug, careers_url=None) -> int:
     return con.execute("SELECT id FROM companies WHERE ats=? AND slug=?", (ats, slug)).fetchone()[0]
 
 
+import re
+import unicodedata
+
+
+def dedup_key(title: str, company_name: str = "") -> str:
+    """Gera uma chave normalizada de (título + empresa) para evitar a mesma vaga repetida em vários canais
+    (ex: a mesma vaga da Rotha IA ou Coodesh postada em backend-br, frontendbr e react-brasil)."""
+    s = unicodedata.normalize("NFKD", title or "").encode("ascii", "ignore").decode().lower()
+    # Remove tags iniciais como [Remoto], [Job-32297], (React), etc.
+    s = re.sub(r"\[[^\]]*\]", " ", s)
+    s = re.sub(r"\((?:react|angular|java|php|python|remoto|remote|brasil|brazil|pleno|junior|jr)\)", " ", s)
+    s = re.sub(r"\b(remoto|remote|home office|brazil|brasil|na|no|em|at|vaga|de|da|do)\b", " ", s)
+    s = re.sub(r"[^a-z0-9]+", " ", s)
+    clean_title = " ".join(s.split())
+
+    comp = unicodedata.normalize("NFKD", company_name or "").encode("ascii", "ignore").decode().lower()
+    # Se for agregador (GitHub, LinkedIn, Programathor, etc.), a empresa real já está no próprio título
+    if any(ag in comp for ag in ("github", "linkedin", "programathor", "eu.dev", "posts")):
+        return clean_title
+    clean_comp = re.sub(r"[^a-z0-9]+", " ", comp).strip()
+    if clean_comp and clean_comp not in clean_title:
+        return f"{clean_comp}::{clean_title}"
+    return clean_title
+
+
+def deduplicate_open_jobs(con) -> int:
+    """Marca como open=0 vagas abertas duplicadas entre canais (mantendo a que já tem nota/status ou a mais antiga)."""
+    rows = con.execute("""
+        SELECT j.id, j.title, j.score, j.status, j.first_seen, c.name AS company_name
+        FROM jobs j
+        JOIN companies c ON c.id = j.company_id
+        WHERE j.open = 1
+        ORDER BY
+            CASE WHEN j.status IN ('candidatei', 'interessa') THEN 0 ELSE 1 END,
+            CASE WHEN j.score IS NOT NULL THEN 0 ELSE 1 END,
+            COALESCE(j.score, 0) DESC,
+            j.first_seen ASC
+    """).fetchall()
+    seen_keys: set[str] = set()
+    to_close: list[str] = []
+    for r in rows:
+        k = dedup_key(r["title"], r["company_name"])
+        if not k:
+            continue
+        if k in seen_keys:
+            to_close.append(r["id"])
+        else:
+            seen_keys.add(k)
+    if to_close:
+        marks = ",".join("?" * len(to_close))
+        con.execute(f"UPDATE jobs SET open=0 WHERE id IN ({marks})", to_close)
+        con.commit()
+    return len(to_close)
+
+
 def save_jobs(con, company_id: int, jobs: list) -> int:
     """Insere vagas novas, atualiza last_seen das existentes e marca como fechadas as que sumiram.
     Retorna quantas vagas são novas."""
@@ -92,4 +147,6 @@ def save_jobs(con, company_id: int, jobs: list) -> int:
         con.execute("UPDATE jobs SET open=0 WHERE company_id=?", (company_id,))
     con.execute("UPDATE companies SET last_fetched=?, last_error=NULL WHERE id=?", (ts, company_id))
     con.commit()
+    deduplicate_open_jobs(con)
     return new
+
