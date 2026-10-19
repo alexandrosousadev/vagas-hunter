@@ -1,8 +1,10 @@
 # Empresas e fontes iniciais (ats:slug  Nome).
 # Para adicionar mais: `python run.py add-empresa <url-de-carreiras | nome | ats:slug>`
 
-# --- Agregadores e Portais (Sem Login / Sem Gupy) ---
+# --- Agregadores, Posts e Portais (Sem Login / Sem Gupy) ---
 linkedin:default                   LinkedIn (Remoto Brasil)
+eudev:junior-remoto                eu.dev.br (Júnior Remoto BR)
+posts:default                      Posts & E-mail RH (Feed/Web)
 github:backend-br/vagas            GitHub Backend-BR
 github:frontendbr/vagas            GitHub Frontend-BR
 github:phpdevbr/vagas              GitHub PHPDev-BR
