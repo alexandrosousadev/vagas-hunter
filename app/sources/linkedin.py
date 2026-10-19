@@ -88,16 +88,22 @@ def _parse_applicants(text: str) -> tuple[int | None, bool]:
 
 def _fetch_detail(c, job_id: str) -> tuple[str, int | None, bool, str, bool]:
     """Retorna (desc, num_app, is_over, ago_txt, is_closed)."""
-    for attempt in range(2):
+    for attempt in range(3):
         try:
             r = c.get(DETAIL_URL.format(job_id))
             if r.status_code == 429:
-                time.sleep(1.5 * (attempt + 1))
+                time.sleep(2.2 * (attempt + 1))
                 continue
             if r.status_code != 200:
-                return "", None, False, "", False
+                return "", None, False, "", True
+            low = r.text.lower()
             tree = HTMLParser(r.text)
-            if tree.css_first(".closed-job__flavor--closed") or "no longer accepting applications" in r.text.lower():
+            if (
+                tree.css_first(".closed-job__flavor--closed")
+                or "no longer accepting applications" in low
+                or "não aceita mais candidaturas" in low
+                or "candidaturas encerradas" in low
+            ):
                 return "", None, False, "", True
             desc_node = tree.css_first(".show-more-less-html__markup") or tree.css_first(".description__text")
             desc = html_to_text(desc_node.html) if desc_node else ""
@@ -111,8 +117,8 @@ def _fetch_detail(c, job_id: str) -> tuple[str, int | None, bool, str, bool]:
 
             return desc, num_app, is_over, ago_txt, False
         except Exception:
-            return "", None, False, "", False
-    return "", None, False, "", False
+            return "", None, False, "", True
+    return "", None, False, "", True
 
 
 def _queries_from_profile() -> list[str]:
@@ -126,17 +132,17 @@ def _queries_from_profile() -> list[str]:
     semelhantes = prof.get("cargos_semelhantes") or []
     skills = prof.get("skills") or []
     queries: list[str] = []
-    for role in (cargos + semelhantes)[:6]:
+    for role in (cargos + semelhantes)[:5]:
         r = role.strip()
         if r and r not in queries:
             queries.append(r)
     if cargos and skills:
         main_role = cargos[0].split()[0]
-        for sk in skills[:4]:
+        for sk in skills[:3]:
             q = f"{main_role} {sk}"
             if q not in queries:
                 queries.append(q)
-    return queries[:9]
+    return queries[:7]
 
 
 def fetch(slug: str) -> list[Job]:
@@ -148,9 +154,9 @@ def fetch(slug: str) -> list[Job]:
         prof_queries = _queries_from_profile()
         queries = prof_queries or li_cfg.get("queries") or DEFAULT_QUERIES
 
-    max_per_query = int(li_cfg.get("max_por_busca", 25))
-    max_days = int(li_cfg.get("ultimos_dias", 7))
-    max_applicants = int(li_cfg.get("max_candidatos", 150))
+    max_per_query = int(li_cfg.get("max_por_busca", 15))
+    max_days = int(li_cfg.get("ultimos_dias", 3))
+    max_applicants = int(li_cfg.get("max_candidatos", 100))
     exclude_companies = [
         x.lower()
         for x in li_cfg.get(
@@ -230,7 +236,7 @@ def fetch(slug: str) -> list[Job]:
                     "posted_at": posted,
                     "early": "early applicant" in benefit.lower(),
                 })
-            time.sleep(0.4)
+            time.sleep(0.5)
 
         from .. import matching
         filtered_cards = [item for item in raw_cards if matching.title_ok(item["title"])]
@@ -238,15 +244,11 @@ def fetch(slug: str) -> list[Job]:
         jobs: list[Job] = []
         for item in filtered_cards:
             desc, num_app, is_over, ago_txt, is_closed = _fetch_detail(c, item["jid"])
-            time.sleep(0.45)
-            if is_closed:
+            time.sleep(0.8)
+            if is_closed or not desc:
                 continue
-            if not desc:
-                # Se o LinkedIn deu rate-limit (429) no detalhe, só mantém se o próprio card confirmar remoto/Brasil
-                if _is_truly_remote(item["title"], item["raw_loc"], ""):
-                    desc = f"Vaga remota no LinkedIn: {item['title']} — Local: {item['raw_loc']}"
-                else:
-                    continue
+            if any(old_w in ago_txt.lower() for old_w in ("semana", "week", "mês", "mes", "month")):
+                continue
 
             # Confirma se a vaga é realmente remota (evita vagas presenciais com tag errada no LinkedIn)
             if not _is_truly_remote(item["title"], item["raw_loc"], desc):

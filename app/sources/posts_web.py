@@ -33,6 +33,7 @@ BLOCKED_DOMAINS = (
     "radarhomeoffice.com",
     "mentoradados.com",
     "linkedin.com/newsletters",
+    "linkedin.com/jobs",
     "bairesdev",
 )
 

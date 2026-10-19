@@ -34,9 +34,9 @@ filtro_local:
 
 # Busca pública no LinkedIn (sem login, filtrada em Remoto no Brasil)
 linkedin:
-  ultimos_dias: 7            # vagas publicadas na última semana
-  max_candidatos: 150        # descarta vagas super concorridas
-  max_por_busca: 25
+  ultimos_dias: 3            # só vagas frescas (últimos 3 dias)
+  max_candidatos: 100        # descarta vagas com +100 candidatos
+  max_por_busca: 15
   queries:
     - 'Desenvolvedor Java Junior'
     - 'Desenvolvedor PHP'
