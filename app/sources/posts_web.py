@@ -28,6 +28,10 @@ BLOCKED_DOMAINS = (
     "talesaugusto.biz",
     "vagasremotas.net",
     "melhoresempregos.com",
+    "infocarreira.com.br",
+    "querohome.com.br",
+    "radarhomeoffice.com",
+    "mentoradados.com",
     "linkedin.com/newsletters",
     "bairesdev",
 )
