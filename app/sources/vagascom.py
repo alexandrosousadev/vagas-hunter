@@ -66,7 +66,7 @@ def fetch(slug: str) -> list[Job]:
                 if full_url in seen_urls or "gupy.io" in full_url.lower():
                     continue
 
-                title = " ".join((a.text(strip=True) or "").split())
+                title = " ".join((a.text(separator=" ", strip=True) or "").split())
                 if not title:
                     continue
 

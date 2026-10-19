@@ -88,6 +88,8 @@ def _query_jobs(
         JOIN companies c ON c.id = j.company_id
         LEFT JOIN user_jobs uj ON uj.job_id = j.id AND uj.user_id = ?
         WHERE j.open = 1
+          AND COALESCE(uj.stage1, j.stage1, 0.5) >= 0.30
+          AND (uj.score IS NULL OR uj.score >= 35)
           AND COALESCE(uj.reason, '') NOT LIKE '[pleno]%'
           AND COALESCE(uj.reason, '') NOT LIKE '[senior]%'
           AND COALESCE(uj.reason, '') NOT LIKE '[sênior]%'
@@ -170,6 +172,8 @@ def _stats(con, user_id: int = 1):
         FROM jobs j
         LEFT JOIN user_jobs uj ON uj.job_id = j.id AND uj.user_id = ?
         WHERE j.open = 1
+          AND COALESCE(uj.stage1, j.stage1, 0.5) >= 0.30
+          AND (uj.score IS NULL OR uj.score >= 35)
           AND COALESCE(uj.reason, '') NOT LIKE '[pleno]%'
           AND COALESCE(uj.reason, '') NOT LIKE '[senior]%'
           AND COALESCE(uj.reason, '') NOT LIKE '[sênior]%'
@@ -295,14 +299,42 @@ def index(
     )
     stats = _stats(con, user_id=user_id)
     comps = con.execute(
-        "SELECT c.id, c.name, c.ats, COUNT(j.id) AS job_count "
-        "FROM companies c LEFT JOIN jobs j ON j.company_id = c.id AND j.open = 1 "
-        "WHERE c.active = 1 GROUP BY c.id ORDER BY c.name"
+        """
+        SELECT c.id, c.name, c.ats, COUNT(j.id) AS job_count
+        FROM companies c
+        LEFT JOIN jobs j ON j.company_id = c.id AND j.open = 1
+        LEFT JOIN user_jobs uj ON uj.job_id = j.id AND uj.user_id = ?
+        WHERE c.active = 1
+          AND (j.id IS NULL OR (
+              COALESCE(uj.stage1, j.stage1, 0.5) >= 0.30
+              AND (uj.score IS NULL OR uj.score >= 35)
+              AND COALESCE(uj.reason, '') NOT LIKE '[pleno]%'
+              AND COALESCE(uj.reason, '') NOT LIKE '[senior]%'
+              AND COALESCE(uj.reason, '') NOT LIKE '[sênior]%'
+              AND COALESCE(uj.reason, '') NOT LIKE '[especialista]%'
+          ))
+        GROUP BY c.id
+        ORDER BY c.name
+        """,
+        (user_id,),
     ).fetchall()
     sources_rows = con.execute(
-        "SELECT c.ats, COUNT(j.id) AS job_count "
-        "FROM companies c JOIN jobs j ON j.company_id = c.id AND j.open = 1 "
-        "WHERE c.active = 1 GROUP BY c.ats ORDER BY job_count DESC"
+        """
+        SELECT c.ats, COUNT(j.id) AS job_count
+        FROM companies c
+        JOIN jobs j ON j.company_id = c.id AND j.open = 1
+        LEFT JOIN user_jobs uj ON uj.job_id = j.id AND uj.user_id = ?
+        WHERE c.active = 1
+          AND COALESCE(uj.stage1, j.stage1, 0.5) >= 0.30
+          AND (uj.score IS NULL OR uj.score >= 35)
+          AND COALESCE(uj.reason, '') NOT LIKE '[pleno]%'
+          AND COALESCE(uj.reason, '') NOT LIKE '[senior]%'
+          AND COALESCE(uj.reason, '') NOT LIKE '[sênior]%'
+          AND COALESCE(uj.reason, '') NOT LIKE '[especialista]%'
+        GROUP BY c.ats
+        ORDER BY job_count DESC
+        """,
+        (user_id,),
     ).fetchall()
     sources = [
         {"ats": r["ats"], "label": SOURCE_LABELS.get(r["ats"], r["ats"].upper()), "count": r["job_count"]}

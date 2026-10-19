@@ -37,9 +37,183 @@ def _has_word(text: str, word: str) -> bool:
 
 # ---------- filtros ----------
 
-def title_ok(title: str) -> bool:
-    t = _norm(title).replace(".", " ")
-    return not any(_has_word(t, w.replace(".", "")) for w in CFG.get("excluir_titulos", []))
+ALWAYS_EXCLUDE_SUBSTRINGS = (
+    "pessoa com deficiencia",
+    "pessoas com deficiencia",
+    "people with disabilities",
+    "vaga afirmativa",
+    "affirmative position",
+    "exclusiva para pessoas",
+    "exclusivo para pessoas",
+    "banco de talentos",
+    "talent pool",
+    "general interest",
+    "cadastre-se aqui",
+    "plenonova",
+    "seniornova",
+    "javasr",
+)
+
+DEV_REQUIRED_WORDS = (
+    "desenvolvedor",
+    "desenvolvedora",
+    "desenvolvimento",
+    "developer",
+    "development",
+    "dev",
+    "software",
+    "engineer",
+    "engenheiro",
+    "engenheira",
+    "engenharia",
+    "programador",
+    "programadora",
+    "fullstack",
+    "full stack",
+    "backend",
+    "back end",
+    "frontend",
+    "front end",
+    "java",
+    "php",
+    "laravel",
+    "spring",
+    "angular",
+    "react",
+    "node",
+    "javascript",
+    "typescript",
+    "python",
+    "dotnet",
+    "mobile",
+    "android",
+    "flutter",
+    "web",
+)
+
+NON_DEV_EXCLUDE_WORDS = (
+    "pesquisa",
+    "ouvidoria",
+    "atendimento",
+    "vendas",
+    "pre vendas",
+    "bdr",
+    "sdr",
+    "sales",
+    "account executive",
+    "customer success",
+    "customer sucess",
+    "marketing",
+    "copywriter",
+    "writer",
+    "interpreter",
+    "linguist",
+    "recruiter",
+    "talent acquisition",
+    "people analytics",
+    "enfermagem",
+    "enfermeiro",
+    "enfermeira",
+    "contabil",
+    "controladoria",
+    "juridic",
+    "legal",
+    "financeiro",
+    "fp a",
+    "facilities",
+    "backoffice",
+    "back office",
+    "cobranca",
+    "despejo",
+    "animador",
+    "animadora",
+    "designer",
+    "instructional",
+    "hypercare",
+    "alliances",
+    "change management",
+    "client partner",
+    "office assistant",
+    "suporte n2",
+    "technical support",
+    "support engineer",
+    "consultor de suporte",
+    "contact center",
+    "zendesk",
+    "servicenow",
+    "cobol",
+    "abap",
+    "sap",
+    "rpa",
+    "power automate",
+    "go to market",
+    "business operations",
+    "gestao estrategica",
+    "administrative",
+    "administrativo",
+    "treinamento de ia",
+    "avaliador de qualidade",
+    "avaliacao de qualidade",
+    "pesquisa clinica",
+    "administracao de banco de dados",
+    "security engineer",
+    "cybersecurity",
+    "cloudsec",
+    "appsec",
+    "sre",
+    "devops",
+)
+
+
+def title_ok(title: str, description: str = "") -> bool:
+    t = _norm(title).replace(".", " ").replace("-", " ")
+    if any(sub in t for sub in ALWAYS_EXCLUDE_SUBSTRINGS):
+        return False
+    extra_words = ["pcd", "specialist", "especialista", "intermediate", "middle", "pleno", "mid"]
+    for w in list(CFG.get("excluir_titulos", [])) + extra_words:
+        if _has_word(t, w.replace(".", "").replace("-", " ")):
+            return False
+    if description:
+        d = _norm(description[:1500])
+        if any(
+            p in d
+            for p in (
+                "exclusiva para pessoas com deficiencia",
+                "vaga exclusiva para pcd",
+                "exclusiva pcd",
+                "affirmative position for people with disabilities",
+            )
+        ):
+            return False
+    return True
+
+
+def career_match_ok(title: str, profile: dict | None = None) -> bool:
+    """Garante que o título da vaga pertence à área profissional do currículo do usuário."""
+    if not title_ok(title):
+        return False
+    t = _norm(title).replace(".", " ").replace("-", " ")
+
+    cargos_norm = " ".join(_norm(c) for c in (profile or {}).get("cargos", []))
+    is_dev_profile = (not cargos_norm) or any(
+        w in cargos_norm for w in ("desenvolvedor", "developer", "programador", "software", "full stack", "backend", "frontend")
+    )
+
+    if is_dev_profile:
+        if any(_has_word(t, bad) for bad in NON_DEV_EXCLUDE_WORDS):
+            return False
+        return any(_has_word(t, req) for req in DEV_REQUIRED_WORDS)
+
+    # Para currículos de outras áreas (RH, Finanças, Design, etc.), exige pelo menos 1 palavra dos cargos/skills
+    role_words = {
+        w
+        for c in (profile or {}).get("cargos", []) + (profile or {}).get("cargos_semelhantes", []) + (profile or {}).get("skills", [])
+        for w in _norm(c).replace("-", " ").split()
+        if len(w) >= 3 and w not in ("para", "com", "dos", "das", "pleno", "junior", "senior", "analista", "assistente", "auxiliar")
+    }
+    if not role_words:
+        return True
+    return any(_has_word(t, rw) for rw in role_words)
 
 
 def location_ok(location: str, remote_flag: bool | None, description: str = "") -> bool:
@@ -101,20 +275,23 @@ def stage1(con, profile: dict, query_text: str, user_id: int = 1) -> int:
     }.get(_norm(profile.get("senioridade", "")), [])
     n = 0
     for r in con.execute("SELECT id, title, description, embedding FROM jobs WHERE open=1").fetchall():
-        text = _norm(f"{r['title']} {r['description'] or ''}")
-        sim = 0.55
-        if qv and r["embedding"]:
-            try:
-                emb = json.loads(r["embedding"])
-                if len(emb) == len(qv):
-                    sim = _cos(qv, emb)
-            except Exception:
-                pass
-        skill_hits = sum(1 for s in skills if _has_word(text, s)) / max(len(skills), 1)
-        title = _norm(r["title"])
-        title_hit = 0.08 if titles & set(title.split()) else 0
-        level_hit = 0.07 if any(_has_word(title, w) for w in level_words) else 0
-        s1_val = round(sim + 0.25 * skill_hits + title_hit + level_hit, 4)
+        if not title_ok(r["title"], r["description"] or "") or not career_match_ok(r["title"], profile):
+            s1_val = 0.0
+        else:
+            text = _norm(f"{r['title']} {r['description'] or ''}")
+            sim = 0.55
+            if qv and r["embedding"]:
+                try:
+                    emb = json.loads(r["embedding"])
+                    if len(emb) == len(qv):
+                        sim = _cos(qv, emb)
+                except Exception:
+                    pass
+            skill_hits = sum(1 for s in skills if _has_word(text, s)) / max(len(skills), 1)
+            title = _norm(r["title"])
+            title_hit = 0.08 if titles & set(title.split()) else 0
+            level_hit = 0.07 if any(_has_word(title, w) for w in level_words) else 0
+            s1_val = round(sim + 0.25 * skill_hits + title_hit + level_hit, 4)
         con.execute(
             """
             INSERT INTO user_jobs (user_id, job_id, stage1)

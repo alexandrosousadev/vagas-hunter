@@ -1,4 +1,5 @@
 """Coleta vagas remotas no portal Programathor (https://programathor.com.br/jobs-city/remoto e por stacks)."""
+import re
 import time
 from selectolax.lexbor import LexborHTMLParser as HTMLParser
 
@@ -47,7 +48,7 @@ def fetch(slug: str) -> list[Job]:
                 if full_url in seen_urls:
                     continue
 
-                title = h3.text(strip=True)
+                title = re.sub(r"NOVA\s*$", "", h3.text(strip=True)).strip()
                 if not title or "vencida" in title.lower():
                     continue
 
