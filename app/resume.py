@@ -42,10 +42,14 @@ def _merge(profile: dict) -> dict:
 
 def get_profile(refresh=False) -> dict:
     path = resume_path()
+    if not path.exists():
+        if CACHE.exists():
+            return _merge(json.loads(CACHE.read_text(encoding="utf-8")))
+        return _merge({"resumo": "", "cargos": [], "cargos_semelhantes": [], "skills": [], "senioridade": "junior"})
     mtime = path.stat().st_mtime
     if not refresh and CACHE.exists():
         cached = json.loads(CACHE.read_text(encoding="utf-8"))
-        if cached.get("_mtime") == mtime:
+        if cached.get("_mtime") == mtime or not refresh:
             return _merge(cached)
     text = read_text()
     profile = llm.chat_json(SYSTEM, text)
