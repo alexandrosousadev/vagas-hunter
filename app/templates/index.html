@@ -203,6 +203,40 @@
   </div>
 
   <script>
+    const LS_KEY = 'vh_statuses_{{ username }}';
+
+    function saveLocalStatus(jobId, status) {
+      try {
+        const map = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+        map[jobId] = status;
+        localStorage.setItem(LS_KEY, JSON.stringify(map));
+        const stSel = document.getElementById('status-select');
+        if (stSel && stSel.value === 'ativas' && (status === 'candidatei' || status === 'descartada')) {
+          setTimeout(() => {
+            const card = document.getElementById('job-' + jobId);
+            if (card) card.remove();
+          }, 250);
+        }
+      } catch (e) {}
+    }
+
+    async function syncLocalStatuses() {
+      try {
+        const map = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+        if (!Object.keys(map).length) return;
+        const r = await fetch('/jobs/sync-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(map),
+        });
+        const d = await r.json();
+        if (d.changed > 0) {
+          window.location.reload();
+        }
+      } catch (e) {}
+    }
+    syncLocalStatuses();
+
     function setSource(val) {
       const sel = document.getElementById('ats-select');
       if (sel) {

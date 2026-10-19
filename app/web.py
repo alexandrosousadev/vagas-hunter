@@ -88,6 +88,10 @@ def _query_jobs(
         JOIN companies c ON c.id = j.company_id
         LEFT JOIN user_jobs uj ON uj.job_id = j.id AND uj.user_id = ?
         WHERE j.open = 1
+          AND COALESCE(uj.reason, '') NOT LIKE '[pleno]%'
+          AND COALESCE(uj.reason, '') NOT LIKE '[senior]%'
+          AND COALESCE(uj.reason, '') NOT LIKE '[sênior]%'
+          AND COALESCE(uj.reason, '') NOT LIKE '[especialista]%'
     """
     params: list = [user_id]
 
@@ -166,6 +170,10 @@ def _stats(con, user_id: int = 1):
         FROM jobs j
         LEFT JOIN user_jobs uj ON uj.job_id = j.id AND uj.user_id = ?
         WHERE j.open = 1
+          AND COALESCE(uj.reason, '') NOT LIKE '[pleno]%'
+          AND COALESCE(uj.reason, '') NOT LIKE '[senior]%'
+          AND COALESCE(uj.reason, '') NOT LIKE '[sênior]%'
+          AND COALESCE(uj.reason, '') NOT LIKE '[especialista]%'
     """, (user_id,)).fetchone()
     comp_count = con.execute("SELECT COUNT(*) FROM companies WHERE active = 1").fetchone()[0]
     return {**(dict(row) if row else {}), "companies": comp_count}
@@ -351,6 +359,48 @@ def update_job_status(request: Request, job_id: str, status: str = Form(...)):
     con.commit()
     job = _get_single_user_job(con, user_id, job_id)
     return templates.TemplateResponse(request, "_job_card.html", {"request": request, "j": job})
+
+
+@app.post("/jobs/sync-status")
+async def sync_status_route(request: Request):
+    """Sincroniza os status salvos no navegador (localStorage) para não perder nada após deploy no Render."""
+    user = _current_user(request)
+    if not user:
+        return JSONResponse({"ok": False}, status_code=401)
+    user_id = user[0]
+    try:
+        payload = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False}, status_code=400)
+    if not isinstance(payload, dict):
+        return JSONResponse({"ok": False}, status_code=400)
+
+    allowed = {"nova", "interessa", "candidatei", "descartada"}
+    con = db.connect()
+    changed = 0
+    for jid, st in payload.items():
+        if st not in allowed or not isinstance(jid, str):
+            continue
+        row = con.execute(
+            "SELECT status FROM user_jobs WHERE user_id=? AND job_id=?",
+            (user_id, jid),
+        ).fetchone()
+        cur_st = (row["status"] if row and row["status"] else "nova")
+        if cur_st == "nova" and st != "nova":
+            con.execute(
+                """
+                INSERT INTO user_jobs(user_id, job_id, status)
+                VALUES (?, ?, ?)
+                ON CONFLICT(user_id, job_id) DO UPDATE SET status=excluded.status
+                """,
+                (user_id, jid, st),
+            )
+            if user_id == 1:
+                con.execute("UPDATE jobs SET status = ? WHERE id = ?", (st, jid))
+            changed += 1
+    if changed:
+        con.commit()
+    return JSONResponse({"ok": True, "changed": changed})
 
 
 @app.post("/jobs/{job_id}/avaliar", response_class=HTMLResponse)

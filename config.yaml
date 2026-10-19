@@ -24,7 +24,7 @@ perfil_extra:
   senioridade: junior                    # estagio | junior | pleno | senior
 
 # Títulos com estas palavras são descartados sem gastar IA
-excluir_titulos: [senior, sênior, sr, staff, principal, lead, líder, head, manager, gerente, diretor, director, coordenador, coordenação, especialista, master, "iii", "iv"]
+excluir_titulos: [pleno, pl, mid, "mid level", "mid-level", "ii", senior, sênior, sr, staff, principal, lead, líder, head, manager, gerente, diretor, director, coordenador, coordenação, especialista, master, arquiteto, arquiteta, architect, "iii", "iv"]
 
 # A vaga passa no filtro de local se a localização/modalidade contém algum destes termos
 filtro_local:
