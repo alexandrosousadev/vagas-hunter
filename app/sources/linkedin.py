@@ -95,6 +95,8 @@ def _fetch_detail(c, job_id: str) -> tuple[str, int | None, bool, str]:
             if r.status_code != 200:
                 return "", None, False, ""
             tree = HTMLParser(r.text)
+            if tree.css_first(".closed-job__flavor--closed") or "no longer accepting applications" in r.text.lower():
+                return "", None, False, ""
             desc_node = tree.css_first(".show-more-less-html__markup") or tree.css_first(".description__text")
             desc = html_to_text(desc_node.html) if desc_node else ""
 
