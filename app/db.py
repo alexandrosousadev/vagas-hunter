@@ -1,12 +1,25 @@
 import hashlib
+import hmac
+import json
+import os
+import re
 import sqlite3
+import unicodedata
 from datetime import datetime, timezone
 
 from .config import DATA
 
 DB_PATH = DATA / "vagas.db"
+SECRET = os.getenv("APP_SECRET", "vagas-hunter-secret-key-2026")
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    profile_json TEXT,
+    created_at TEXT
+);
 CREATE TABLE IF NOT EXISTS companies (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
@@ -38,7 +51,20 @@ CREATE TABLE IF NOT EXISTS jobs (
     scored_at TEXT,
     status TEXT DEFAULT 'nova'    -- nova | interessa | candidatei | descartada
 );
+CREATE TABLE IF NOT EXISTS user_jobs (
+    user_id INTEGER REFERENCES users(id),
+    job_id TEXT REFERENCES jobs(id),
+    stage1 REAL,
+    score INTEGER,
+    reason TEXT,
+    missing TEXT,
+    seniority_ok INTEGER,
+    scored_at TEXT,
+    status TEXT DEFAULT 'nova',
+    PRIMARY KEY (user_id, job_id)
+);
 CREATE INDEX IF NOT EXISTS ix_jobs_score ON jobs(score);
+CREATE INDEX IF NOT EXISTS ix_user_jobs_user ON user_jobs(user_id, score);
 """
 
 
@@ -50,10 +76,58 @@ def job_id(url: str) -> str:
     return hashlib.sha1(url.strip().encode()).hexdigest()
 
 
+def hash_password(password: str) -> str:
+    return hashlib.pbkdf2_hmac("sha256", password.encode(), SECRET.encode(), 100_000).hex()
+
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    return hmac.compare_digest(hash_password(password), stored_hash)
+
+
+def make_session_token(user_id: int, username: str) -> str:
+    payload = f"{user_id}:{username}"
+    sig = hmac.new(SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()[:32]
+    return f"{payload}:{sig}"
+
+
+def parse_session_token(token: str | None) -> tuple[int, str] | None:
+    if not token or token.count(":") != 2:
+        return None
+    uid_str, username, sig = token.split(":", 2)
+    if not uid_str.isdigit():
+        return None
+    expected = hmac.new(SECRET.encode(), f"{uid_str}:{username}".encode(), hashlib.sha256).hexdigest()[:32]
+    if not hmac.compare_digest(sig, expected):
+        return None
+    return int(uid_str), username
+
+
+def _ensure_default_user(con: sqlite3.Connection):
+    """Garante que a conta padrão 'alexandro' (id=1) exista e tenha as notas/status iniciais migrados."""
+    row = con.execute("SELECT id FROM users WHERE id=1").fetchone()
+    if not row:
+        default_pw = os.getenv("DEFAULT_ADMIN_PASSWORD", "123456")
+        prof_path = DATA / "perfil.json"
+        prof_txt = prof_path.read_text(encoding="utf-8") if prof_path.exists() else None
+        con.execute(
+            "INSERT INTO users(id, username, password_hash, profile_json, created_at) VALUES (1, ?, ?, ?, ?)",
+            ("alexandro", hash_password(default_pw), prof_txt, now()),
+        )
+        # Migra todas as notas e status existentes na tabela jobs para o usuário 1 (alexandro)
+        con.execute("""
+            INSERT OR IGNORE INTO user_jobs(user_id, job_id, stage1, score, reason, missing, seniority_ok, scored_at, status)
+            SELECT 1, id, stage1, score, reason, missing, seniority_ok, scored_at, COALESCE(status, 'nova')
+            FROM jobs
+            WHERE stage1 IS NOT NULL OR score IS NOT NULL OR status != 'nova'
+        """)
+        con.commit()
+
+
 def connect() -> sqlite3.Connection:
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
     con.executescript(SCHEMA)
+    _ensure_default_user(con)
     return con
 
 
@@ -68,15 +142,9 @@ def upsert_company(con, name, ats, slug, careers_url=None) -> int:
     return con.execute("SELECT id FROM companies WHERE ats=? AND slug=?", (ats, slug)).fetchone()[0]
 
 
-import re
-import unicodedata
-
-
 def dedup_key(title: str, company_name: str = "") -> str:
-    """Gera uma chave normalizada de (título + empresa) para evitar a mesma vaga repetida em vários canais
-    (ex: a mesma vaga da Rotha IA ou Coodesh postada em backend-br, frontendbr e react-brasil)."""
+    """Gera uma chave normalizada de (título + empresa) para evitar a mesma vaga repetida em vários canais."""
     s = unicodedata.normalize("NFKD", title or "").encode("ascii", "ignore").decode().lower()
-    # Remove tags iniciais como [Remoto], [Job-32297], (React), etc.
     s = re.sub(r"\[[^\]]*\]", " ", s)
     s = re.sub(r"\((?:react|angular|java|php|python|remoto|remote|brasil|brazil|pleno|junior|jr)\)", " ", s)
     s = re.sub(r"\b(remoto|remote|home office|brazil|brasil|na|no|em|at|vaga|de|da|do)\b", " ", s)
@@ -84,7 +152,6 @@ def dedup_key(title: str, company_name: str = "") -> str:
     clean_title = " ".join(s.split())
 
     comp = unicodedata.normalize("NFKD", company_name or "").encode("ascii", "ignore").decode().lower()
-    # Se for agregador (GitHub, LinkedIn, Programathor, etc.), a empresa real já está no próprio título
     if any(ag in comp for ag in ("github", "linkedin", "programathor", "eu.dev", "posts")):
         return clean_title
     clean_comp = re.sub(r"[^a-z0-9]+", " ", comp).strip()
@@ -124,8 +191,7 @@ def deduplicate_open_jobs(con) -> int:
 
 
 def save_jobs(con, company_id: int, jobs: list) -> int:
-    """Insere vagas novas, atualiza last_seen das existentes e marca como fechadas as que sumiram.
-    Retorna quantas vagas são novas."""
+    """Insere vagas novas, atualiza last_seen das existentes e marca como fechadas as que sumiram."""
     ts = now()
     new = 0
     seen = []
@@ -149,4 +215,3 @@ def save_jobs(con, company_id: int, jobs: list) -> int:
     con.commit()
     deduplicate_open_jobs(con)
     return new
-

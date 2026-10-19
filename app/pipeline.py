@@ -45,10 +45,13 @@ def run(company: str | None = None, use_ai: bool = True):
     evaluate(con)
 
 
-def evaluate(con=None, limit: int | None = None):
+def evaluate(con=None, limit: int | None = None, user_id: int = 1):
     con = con or db.connect()
-    profile = resume.get_profile()
-    matching.stage1(con, profile, resume.profile_query_text(profile))
+    profile = resume.get_profile(user_id=user_id, con=con)
+    if not profile:
+        return 0
+    matching.stage1(con, profile, resume.profile_query_text(profile), user_id=user_id)
     print("Etapa 2: avaliando as melhores vagas com a IA local...")
-    n = matching.stage2(con, profile, limit)
+    n = matching.stage2(con, profile, limit, user_id=user_id)
     print(f"{n} vagas avaliadas.")
+    return n

@@ -102,17 +102,11 @@ def _merge(profile: dict) -> dict:
     return profile
 
 
-def save_uploaded_resume(filename: str, data: bytes) -> dict:
-    """Salva o currículo enviado pelo navegador, extrai o perfil (com IA ou fallback) e atualiza o cache."""
+def save_uploaded_resume(filename: str, data: bytes, user_id: int = 1, con=None) -> dict:
+    """Salva o currículo enviado pelo navegador na conta do usuário logado."""
     text = extract_text_from_bytes(filename, data)
     if not text or len(text.strip()) < 20:
         raise ValueError("Não foi possível extrair texto desse arquivo. Envie um PDF ou DOCX válido.")
-
-    dest_dir = ROOT / "curriculo"
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    ext = ".docx" if filename.lower().endswith(".docx") else ".pdf"
-    dest_file = dest_dir / f"curriculo{ext}"
-    dest_file.write_bytes(data)
 
     if llm.available():
         try:
@@ -126,11 +120,36 @@ def save_uploaded_resume(filename: str, data: bytes) -> dict:
     profile["_texto"] = text
     profile["_custom_upload"] = True
     profile["_filename"] = filename
-    CACHE.write_text(json.dumps(profile, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    from . import db
+    own_con = con is None
+    con = con or db.connect()
+    con.execute("UPDATE users SET profile_json=? WHERE id=?", (json.dumps(profile, ensure_ascii=False), user_id))
+    con.commit()
+    if user_id == 1:
+        CACHE.write_text(json.dumps(profile, ensure_ascii=False, indent=2), encoding="utf-8")
+    if own_con:
+        con.close()
     return profile
 
 
-def get_profile(refresh=False) -> dict:
+def get_profile(refresh=False, user_id: int = 1, con=None) -> dict:
+    if not refresh and user_id:
+        from . import db
+        own_con = con is None
+        c = con or db.connect()
+        row = c.execute("SELECT profile_json FROM users WHERE id=?", (user_id,)).fetchone()
+        if own_con:
+            c.close()
+        if row and row["profile_json"]:
+            try:
+                p = json.loads(row["profile_json"])
+                return _merge(p) if user_id == 1 else p
+            except Exception:
+                pass
+        if user_id != 1:
+            return {"resumo": "Nenhum currículo enviado ainda. Clique em '📄 Enviar Currículo (PDF/DOCX)' no topo para personalizar as vagas para sua área!", "cargos": [], "cargos_semelhantes": [], "skills": [], "senioridade": "junior"}
+
     if not refresh and CACHE.exists():
         cached = json.loads(CACHE.read_text(encoding="utf-8"))
         if cached.get("_custom_upload"):

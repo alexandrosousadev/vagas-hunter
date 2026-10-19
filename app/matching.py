@@ -70,7 +70,7 @@ def _cos(a, b) -> float:
     return dot / (math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(y * y for y in b)) or 1)
 
 
-def stage1(con, profile: dict, query_text: str) -> int:
+def stage1(con, profile: dict, query_text: str, user_id: int = 1) -> int:
     llm_ok = llm.available()
     qv = None
     if llm_ok:
@@ -114,8 +114,17 @@ def stage1(con, profile: dict, query_text: str) -> int:
         title = _norm(r["title"])
         title_hit = 0.08 if titles & set(title.split()) else 0
         level_hit = 0.07 if any(_has_word(title, w) for w in level_words) else 0
-        con.execute("UPDATE jobs SET stage1=? WHERE id=?",
-                    (round(sim + 0.25 * skill_hits + title_hit + level_hit, 4), r["id"]))
+        s1_val = round(sim + 0.25 * skill_hits + title_hit + level_hit, 4)
+        con.execute(
+            """
+            INSERT INTO user_jobs (user_id, job_id, stage1)
+            VALUES (?, ?, ?)
+            ON CONFLICT(user_id, job_id) DO UPDATE SET stage1=excluded.stage1
+            """,
+            (user_id, r["id"], s1_val),
+        )
+        if user_id == 1:
+            con.execute("UPDATE jobs SET stage1=? WHERE id=?", (s1_val, r["id"]))
         n += 1
     con.commit()
     return n
@@ -148,13 +157,20 @@ def compute_score(res: dict, candidate_level: str) -> tuple[int, bool]:
     return int(max(0, min(100, round(score)))), gap <= 0
 
 
-def stage2(con, profile: dict, limit: int | None = None) -> int:
+def stage2(con, profile: dict, limit: int | None = None, user_id: int = 1) -> int:
     cfg = CFG.get("matching", {})
     limit = limit or cfg.get("top_n_ia", 40)
     rows = con.execute(
-        "SELECT j.*, c.name AS company, c.ats FROM jobs j JOIN companies c ON c.id=j.company_id "
-        "WHERE j.open=1 AND j.score IS NULL AND j.stage1 >= ? ORDER BY j.stage1 DESC LIMIT ?",
-        (cfg.get("similaridade_minima", 0.5), limit),
+        """
+        SELECT j.*, c.name AS company, c.ats, COALESCE(uj.stage1, j.stage1, 0) AS u_stage1
+        FROM jobs j
+        JOIN companies c ON c.id = j.company_id
+        LEFT JOIN user_jobs uj ON uj.job_id = j.id AND uj.user_id = ?
+        WHERE j.open = 1 AND uj.score IS NULL AND COALESCE(uj.stage1, j.stage1, 0) >= ?
+        ORDER BY u_stage1 DESC
+        LIMIT ?
+        """,
+        (user_id, cfg.get("similaridade_minima", 0.5), limit),
     ).fetchall()
     candidate = (
         f"Senioridade: {profile.get('senioridade')}\nCargos: {', '.join(profile.get('cargos', []))}\n"
@@ -176,11 +192,27 @@ def stage2(con, profile: dict, limit: int | None = None) -> int:
             print(f"  ! erro avaliando {r['title']}: {e}")
             continue
         missing = res.get("skills_faltando") or []
+        reason_txt = f"[{res.get('nivel_vaga', '?')}] {res.get('motivo', '')}"
+        missing_txt = ", ".join(map(str, missing[:6]))
+        scored_at = db.now()
         con.execute(
-            "UPDATE jobs SET score=?, reason=?, missing=?, seniority_ok=?, scored_at=? WHERE id=?",
-            (nota, f"[{res.get('nivel_vaga', '?')}] {res.get('motivo', '')}",
-             ", ".join(map(str, missing[:6])), int(level_ok), db.now(), r["id"]),
+            """
+            INSERT INTO user_jobs (user_id, job_id, score, reason, missing, seniority_ok, scored_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(user_id, job_id) DO UPDATE SET
+                score=excluded.score,
+                reason=excluded.reason,
+                missing=excluded.missing,
+                seniority_ok=excluded.seniority_ok,
+                scored_at=excluded.scored_at
+            """,
+            (user_id, r["id"], nota, reason_txt, missing_txt, int(level_ok), scored_at),
         )
+        if user_id == 1:
+            con.execute(
+                "UPDATE jobs SET score=?, reason=?, missing=?, seniority_ok=?, scored_at=? WHERE id=?",
+                (nota, reason_txt, missing_txt, int(level_ok), scored_at, r["id"]),
+            )
         con.commit()
         print(f"  [{i}/{len(rows)}] {nota:3d}  {r['company']} - {r['title']}")
     return len(rows)

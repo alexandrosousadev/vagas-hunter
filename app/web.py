@@ -1,9 +1,10 @@
 """Painel web local (FastAPI + Jinja2 + HTMX)."""
+import re
 import threading
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, Query, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from contextlib import asynccontextmanager
@@ -12,7 +13,13 @@ import time
 from . import companies, db, llm, pipeline, resume
 from .config import CFG
 
+COOKIE_NAME = "vh_session"
 _task_state = {"running": False, "message": "", "last_sync": ""}
+
+
+def _current_user(request: Request) -> tuple[int, str] | None:
+    token = request.cookies.get(COOKIE_NAME)
+    return db.parse_session_token(token)
 
 
 def _run_sync(avaliar: bool = True, limit: int = 15):
@@ -27,7 +34,7 @@ def _run_sync(avaliar: bool = True, limit: int = 15):
         new = pipeline.collect(con)
         if avaliar and llm.available() and new > 0:
             _task_state["message"] = f"{new} vagas novas. Avaliando com a IA..."
-            pipeline.evaluate(con, limit=limit)
+            pipeline.evaluate(con, limit=limit, user_id=1)
         _task_state["last_sync"] = db.now()
         _task_state["message"] = f"Concluído ({new} vagas novas)."
     except Exception as e:
@@ -57,6 +64,7 @@ templates = Jinja2Templates(directory=str(Path(__file__).with_name("templates"))
 
 def _query_jobs(
     con,
+    user_id: int = 1,
     q: str = "",
     status: str = "ativas",
     min_score: int = 0,
@@ -65,25 +73,36 @@ def _query_jobs(
     only_scored: bool = False,
 ):
     sql = """
-        SELECT j.*, c.name AS company_name, c.ats AS company_ats, c.slug AS company_slug
+        SELECT
+            j.id, j.company_id, j.title, j.url, j.location, j.description,
+            j.posted_at, j.first_seen, j.last_seen, j.open,
+            uj.stage1 AS stage1,
+            uj.score AS score,
+            uj.reason AS reason,
+            uj.missing AS missing,
+            uj.seniority_ok AS seniority_ok,
+            uj.scored_at AS scored_at,
+            COALESCE(uj.status, 'nova') AS status,
+            c.name AS company_name, c.ats AS company_ats, c.slug AS company_slug
         FROM jobs j
         JOIN companies c ON c.id = j.company_id
+        LEFT JOIN user_jobs uj ON uj.job_id = j.id AND uj.user_id = ?
         WHERE j.open = 1
     """
-    params = []
+    params: list = [user_id]
 
     if status == "ativas":
-        sql += " AND j.status IN ('nova', 'interessa')"
+        sql += " AND COALESCE(uj.status, 'nova') IN ('nova', 'interessa')"
     elif status != "todas":
-        sql += " AND j.status = ?"
+        sql += " AND COALESCE(uj.status, 'nova') = ?"
         params.append(status)
 
     if min_score > 0:
-        sql += " AND COALESCE(j.score, -1) >= ?"
+        sql += " AND COALESCE(uj.score, -1) >= ?"
         params.append(min_score)
 
     if only_scored:
-        sql += " AND j.score IS NOT NULL"
+        sql += " AND uj.score IS NOT NULL"
 
     if company_id > 0:
         sql += " AND j.company_id = ?"
@@ -97,32 +116,57 @@ def _query_jobs(
 
     if q.strip():
         term = f"%{q.strip()}%"
-        sql += " AND (j.title LIKE ? OR c.name LIKE ? OR j.description LIKE ? OR j.reason LIKE ?)"
+        sql += " AND (j.title LIKE ? OR c.name LIKE ? OR j.description LIKE ? OR COALESCE(uj.reason, '') LIKE ?)"
         params.extend([term, term, term, term])
 
     sql += """
         ORDER BY
-            CASE WHEN j.score IS NOT NULL THEN 0 ELSE 1 END,
-            COALESCE(j.score, 0) DESC,
-            COALESCE(j.stage1, 0) DESC,
+            CASE WHEN uj.score IS NOT NULL THEN 0 ELSE 1 END,
+            COALESCE(uj.score, 0) DESC,
+            COALESCE(uj.stage1, 0) DESC,
             j.first_seen DESC
         LIMIT 250
     """
     return con.execute(sql, params).fetchall()
 
 
-def _stats(con):
+def _get_single_user_job(con, user_id: int, job_id: str):
+    return con.execute(
+        """
+        SELECT
+            j.id, j.company_id, j.title, j.url, j.location, j.description,
+            j.posted_at, j.first_seen, j.last_seen, j.open,
+            uj.stage1 AS stage1,
+            uj.score AS score,
+            uj.reason AS reason,
+            uj.missing AS missing,
+            uj.seniority_ok AS seniority_ok,
+            uj.scored_at AS scored_at,
+            COALESCE(uj.status, 'nova') AS status,
+            c.name AS company_name, c.ats AS company_ats, c.slug AS company_slug
+        FROM jobs j
+        JOIN companies c ON c.id = j.company_id
+        LEFT JOIN user_jobs uj ON uj.job_id = j.id AND uj.user_id = ?
+        WHERE j.id = ?
+        """,
+        (user_id, job_id),
+    ).fetchone()
+
+
+def _stats(con, user_id: int = 1):
     row = con.execute("""
         SELECT
             COUNT(*) AS total,
-            SUM(CASE WHEN score IS NOT NULL THEN 1 ELSE 0 END) AS scored,
-            SUM(CASE WHEN score >= 70 AND status != 'descartada' THEN 1 ELSE 0 END) AS high_match,
-            SUM(CASE WHEN status = 'nova' THEN 1 ELSE 0 END) AS novas,
-            SUM(CASE WHEN status = 'interessa' THEN 1 ELSE 0 END) AS interessa,
-            SUM(CASE WHEN status = 'candidatei' THEN 1 ELSE 0 END) AS candidatei,
-            SUM(CASE WHEN status = 'descartada' THEN 1 ELSE 0 END) AS descartadas
-        FROM jobs WHERE open = 1
-    """).fetchone()
+            SUM(CASE WHEN uj.score IS NOT NULL THEN 1 ELSE 0 END) AS scored,
+            SUM(CASE WHEN uj.score >= 70 AND COALESCE(uj.status, 'nova') != 'descartada' THEN 1 ELSE 0 END) AS high_match,
+            SUM(CASE WHEN COALESCE(uj.status, 'nova') = 'nova' THEN 1 ELSE 0 END) AS novas,
+            SUM(CASE WHEN COALESCE(uj.status, 'nova') = 'interessa' THEN 1 ELSE 0 END) AS interessa,
+            SUM(CASE WHEN COALESCE(uj.status, 'nova') = 'candidatei' THEN 1 ELSE 0 END) AS candidatei,
+            SUM(CASE WHEN COALESCE(uj.status, 'nova') = 'descartada' THEN 1 ELSE 0 END) AS descartadas
+        FROM jobs j
+        LEFT JOIN user_jobs uj ON uj.job_id = j.id AND uj.user_id = ?
+        WHERE j.open = 1
+    """, (user_id,)).fetchone()
     comp_count = con.execute("SELECT COUNT(*) FROM companies WHERE active = 1").fetchone()[0]
     return {**(dict(row) if row else {}), "companies": comp_count}
 
@@ -141,6 +185,71 @@ SOURCE_LABELS = {
 }
 
 
+@app.get("/login", response_class=HTMLResponse)
+def login_page(request: Request, erro: str = Query("")):
+    user = _current_user(request)
+    if user:
+        return RedirectResponse("/", status_code=303)
+    db.connect()
+    return templates.TemplateResponse(request, "login.html", {"request": request, "erro": erro})
+
+
+@app.post("/login")
+def login_submit(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    acao: str = Form("login"),
+):
+    uname = re.sub(r"[^a-z0-9_.-]", "", username.strip().lower())
+    if len(uname) < 2:
+        return templates.TemplateResponse(
+            request, "login.html", {"request": request, "erro": "Informe um nome de usuário válido (mín. 2 letras)."}
+        )
+    if len(password) < 4:
+        return templates.TemplateResponse(
+            request, "login.html", {"request": request, "erro": "A senha deve ter pelo menos 4 caracteres."}
+        )
+
+    con = db.connect()
+    row = con.execute("SELECT id, username, password_hash FROM users WHERE username = ?", (uname,)).fetchone()
+
+    if acao == "register":
+        if row:
+            return templates.TemplateResponse(
+                request, "login.html", {"request": request, "erro": f"O usuário '{uname}' já existe. Faça login."}
+            )
+        cur = con.execute(
+            "INSERT INTO users(username, password_hash, created_at) VALUES (?, ?, ?)",
+            (uname, db.hash_password(password), db.now()),
+        )
+        con.commit()
+        user_id = cur.lastrowid
+    else:
+        if not row or not db.verify_password(password, row["password_hash"]):
+            return templates.TemplateResponse(
+                request, "login.html", {"request": request, "erro": "Usuário ou senha incorretos."}
+            )
+        user_id = row["id"]
+
+    resp = RedirectResponse("/", status_code=303)
+    resp.set_cookie(
+        COOKIE_NAME,
+        db.make_session_token(user_id, uname),
+        max_age=60 * 60 * 24 * 60,
+        httponly=True,
+        samesite="lax",
+    )
+    return resp
+
+
+@app.post("/logout")
+def logout_route():
+    resp = RedirectResponse("/login", status_code=303)
+    resp.delete_cookie(COOKIE_NAME)
+    return resp
+
+
 @app.get("/", response_class=HTMLResponse)
 def index(
     request: Request,
@@ -151,11 +260,16 @@ def index(
     ats: str = Query(""),
     only_scored: bool = Query(False),
 ):
+    user = _current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    user_id, username = user
+
     con = db.connect()
     jobs = _query_jobs(
-        con, q=q, status=status, min_score=min_score, company_id=company_id, ats=ats, only_scored=only_scored
+        con, user_id=user_id, q=q, status=status, min_score=min_score, company_id=company_id, ats=ats, only_scored=only_scored
     )
-    stats = _stats(con)
+    stats = _stats(con, user_id=user_id)
     comps = con.execute(
         "SELECT c.id, c.name, c.ats, COUNT(j.id) AS job_count "
         "FROM companies c LEFT JOIN jobs j ON j.company_id = c.id AND j.open = 1 "
@@ -171,12 +285,14 @@ def index(
         for r in sources_rows
     ]
     try:
-        prof = resume.get_profile() if (resume.CACHE.exists()) else {}
+        prof = resume.get_profile(user_id=user_id, con=con)
     except Exception:
         prof = {}
 
     ctx = {
         "request": request,
+        "username": username,
+        "user_id": user_id,
         "jobs": jobs,
         "stats": stats,
         "companies": comps,
@@ -200,32 +316,39 @@ def index(
 
 @app.post("/jobs/{job_id}/status", response_class=HTMLResponse)
 def update_job_status(request: Request, job_id: str, status: str = Form(...)):
+    user = _current_user(request)
+    user_id = user[0] if user else 1
     allowed = {"nova", "interessa", "candidatei", "descartada"}
     if status not in allowed:
         return HTMLResponse("Status inválido", status_code=400)
     con = db.connect()
-    con.execute("UPDATE jobs SET status = ? WHERE id = ?", (status, job_id))
+    con.execute(
+        """
+        INSERT INTO user_jobs(user_id, job_id, status)
+        VALUES (?, ?, ?)
+        ON CONFLICT(user_id, job_id) DO UPDATE SET status=excluded.status
+        """,
+        (user_id, job_id, status),
+    )
+    if user_id == 1:
+        con.execute("UPDATE jobs SET status = ? WHERE id = ?", (status, job_id))
     con.commit()
-    job = con.execute(
-        "SELECT j.*, c.name AS company_name, c.ats AS company_ats, c.slug AS company_slug "
-        "FROM jobs j JOIN companies c ON c.id = j.company_id WHERE j.id = ?",
-        (job_id,),
-    ).fetchone()
+    job = _get_single_user_job(con, user_id, job_id)
     return templates.TemplateResponse(request, "_job_card.html", {"request": request, "j": job})
 
 
 @app.post("/jobs/{job_id}/avaliar", response_class=HTMLResponse)
 def evaluate_single_job(request: Request, job_id: str):
+    user = _current_user(request)
+    user_id = user[0] if user else 1
     con = db.connect()
-    r = con.execute(
-        "SELECT j.*, c.name AS company_name, c.ats AS company_ats, c.slug AS company_slug "
-        "FROM jobs j JOIN companies c ON c.id = j.company_id WHERE j.id = ?",
-        (job_id,),
-    ).fetchone()
+    r = _get_single_user_job(con, user_id, job_id)
     if not r:
         return HTMLResponse("Vaga não encontrada", status_code=404)
 
-    profile = resume.get_profile()
+    profile = resume.get_profile(user_id=user_id, con=con)
+    if not profile:
+        return HTMLResponse("Envie seu currículo primeiro para avaliar vagas.", status_code=400)
     desc = r["description"] or ""
     candidate = (
         f"Senioridade: {profile.get('senioridade')}\nCargos: {', '.join(profile.get('cargos', []))}\n"
@@ -236,17 +359,29 @@ def evaluate_single_job(request: Request, job_id: str):
     from . import matching
     nota, level_ok = matching.compute_score(res, profile.get("senioridade", "junior"))
     missing = res.get("skills_faltando") or []
+    reason_txt = f"[{res.get('nivel_vaga', '?')}] {res.get('motivo', '')}"
+    missing_txt = ", ".join(map(str, missing[:6]))
+    scored_at = db.now()
     con.execute(
-        "UPDATE jobs SET score=?, reason=?, missing=?, seniority_ok=?, scored_at=? WHERE id=?",
-        (nota, f"[{res.get('nivel_vaga', '?')}] {res.get('motivo', '')}",
-         ", ".join(map(str, missing[:6])), int(level_ok), db.now(), job_id),
+        """
+        INSERT INTO user_jobs(user_id, job_id, score, reason, missing, seniority_ok, scored_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(user_id, job_id) DO UPDATE SET
+            score=excluded.score,
+            reason=excluded.reason,
+            missing=excluded.missing,
+            seniority_ok=excluded.seniority_ok,
+            scored_at=excluded.scored_at
+        """,
+        (user_id, job_id, nota, reason_txt, missing_txt, int(level_ok), scored_at),
     )
+    if user_id == 1:
+        con.execute(
+            "UPDATE jobs SET score=?, reason=?, missing=?, seniority_ok=?, scored_at=? WHERE id=?",
+            (nota, reason_txt, missing_txt, int(level_ok), scored_at, job_id),
+        )
     con.commit()
-    job = con.execute(
-        "SELECT j.*, c.name AS company_name, c.ats AS company_ats, c.slug AS company_slug "
-        "FROM jobs j JOIN companies c ON c.id = j.company_id WHERE j.id = ?",
-        (job_id,),
-    ).fetchone()
+    job = _get_single_user_job(con, user_id, job_id)
     return templates.TemplateResponse(request, "_job_card.html", {"request": request, "j": job})
 
 
@@ -256,7 +391,9 @@ def matching_system() -> str:
 
 
 @app.post("/acoes/coletar")
-def trigger_collect(avaliar: bool = Form(True)):
+def trigger_collect(request: Request, avaliar: bool = Form(True)):
+    user = _current_user(request)
+    user_id = user[0] if user else 1
     if _task_state["running"]:
         return JSONResponse({"status": "already_running", "message": _task_state["message"]})
 
@@ -267,8 +404,8 @@ def trigger_collect(avaliar: bool = Form(True)):
             con = db.connect()
             new = pipeline.collect(con)
             if avaliar and llm.available():
-                _task_state["message"] = f"{new} vagas novas. Avaliando com a IA local..."
-                pipeline.evaluate(con, limit=15)
+                _task_state["message"] = f"{new} vagas novas. Avaliando com a IA..."
+                pipeline.evaluate(con, limit=15, user_id=user_id)
             _task_state["message"] = f"Concluído ({new} vagas novas)."
         except Exception as e:
             _task_state["message"] = f"Erro: {e}"
@@ -280,16 +417,18 @@ def trigger_collect(avaliar: bool = Form(True)):
 
 
 @app.post("/acoes/avaliar")
-def trigger_evaluate(limite: int = Form(15)):
+def trigger_evaluate(request: Request, limite: int = Form(15)):
+    user = _current_user(request)
+    user_id = user[0] if user else 1
     if _task_state["running"]:
         return JSONResponse({"status": "already_running", "message": _task_state["message"]})
 
     def _worker():
         _task_state["running"] = True
         try:
-            _task_state["message"] = f"Avaliando até {limite} vagas com o Ollama..."
+            _task_state["message"] = f"Avaliando até {limite} vagas com a IA para o seu perfil..."
             con = db.connect()
-            n = pipeline.evaluate(con, limit=limite)
+            n = pipeline.evaluate(con, limit=limite, user_id=user_id)
             _task_state["message"] = f"Concluído ({n} vagas avaliadas)."
         except Exception as e:
             _task_state["message"] = f"Erro: {e}"
@@ -316,37 +455,44 @@ def add_company_route(entrada: str = Form(...), nome: str = Form("")):
 
 
 @app.post("/curriculo/upload")
-async def upload_resume_route(arquivo: UploadFile = File(...), reavaliar: bool = Form(True)):
+async def upload_resume_route(
+    request: Request,
+    arquivo: UploadFile = File(...),
+    reavaliar: bool = Form(True),
+):
+    user = _current_user(request)
+    user_id = user[0] if user else 1
     try:
         data = await arquivo.read()
         filename = arquivo.filename or "curriculo.pdf"
-        prof = resume.save_uploaded_resume(filename, data)
+        con = db.connect()
+        prof = resume.save_uploaded_resume(filename, data, user_id=user_id, con=con)
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
 
     def _worker():
         _task_state["running"] = True
         try:
-            _task_state["message"] = f"Currículo '{filename}' carregado! Buscando vagas da área e recalculando aderência..."
-            con = db.connect()
-            con.execute("UPDATE jobs SET score=NULL, reason=NULL, missing=NULL, seniority_ok=NULL")
-            con.commit()
-            try:
-                pipeline.collect(con, company="default")
-            except Exception:
-                pass
+            _task_state["message"] = f"Currículo '{filename}' salvo na sua conta! Recalculando aderência..."
+            wcon = db.connect()
+            wcon.execute(
+                "UPDATE user_jobs SET score=NULL, reason=NULL, missing=NULL, seniority_ok=NULL WHERE user_id=?",
+                (user_id,),
+            )
+            wcon.commit()
             from . import matching
-            matching.stage1(con, prof, resume.profile_query_text(prof))
+            matching.stage1(wcon, prof, resume.profile_query_text(prof), user_id=user_id)
             if reavaliar and llm.available():
-                _task_state["message"] = "Avaliando as melhores vagas para o novo currículo com a IA..."
-                matching.stage2(con, prof, limit=15)
-            _task_state["message"] = "Pronto! Ranking atualizado para o novo currículo."
+                _task_state["message"] = "Avaliando as melhores vagas para o seu currículo com a IA..."
+                matching.stage2(wcon, prof, limit=15, user_id=user_id)
+            _task_state["message"] = "Pronto! Seu ranking exclusivo foi atualizado."
         except Exception as e:
             _task_state["message"] = f"Erro ao recalcular: {e}"
         finally:
             _task_state["running"] = False
 
     threading.Thread(target=_worker, daemon=True).start()
-    return JSONResponse({"ok": True, "message": "Currículo enviado! Atualizando vagas..."})
+    return JSONResponse({"ok": True, "message": "Currículo enviado! Atualizando suas vagas..."})
+
 
 
