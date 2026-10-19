@@ -124,14 +124,14 @@ def stage1(con, profile: dict, query_text: str) -> int:
 # ---------- etapa 2 ----------
 
 SYSTEM = (
-    "Você é um recrutador técnico brasileiro avaliando se uma vaga combina com um candidato. "
+    "Você é um recrutador brasileiro avaliando se uma vaga combina com um candidato (qualquer área: TI, Suporte, Dados, Design, Produto, Administrativo, Financeiro, Comercial, RH, etc.). "
     "Analise com cuidado e responda só JSON com estes campos, nesta ordem:\n"
-    '"skills_em_comum": [str]  -- tecnologias exigidas pela vaga que o candidato tem\n'
+    '"skills_em_comum": [str]  -- competências/ferramentas exigidas pela vaga que o candidato tem\n'
     '"skills_faltando": [str]  -- só as obrigatórias/importantes que ele não tem (máx. 6)\n'
-    '"aderencia_stack": 0-10   -- 10 = stack principal idêntica; 7 = maioria em comum; 4 = área certa, stack diferente; 0 = outra área\n'
+    '"aderencia_stack": 0-10   -- 10 = função e requisitos idênticos ao perfil; 7 = mesma área e maioria das competências em comum; 4 = área parecida, mas faltam competências-chave; 0 = outra profissão/área sem relação\n'
     '"nivel_vaga": "estagio|junior|pleno|senior|especialista"\n'
     '"exige_ingles_fluente": true|false\n'
-    '"requisito_eliminatorio": true|false  -- algo que o candidato claramente não cumpre (ex.: formação obrigatória, certificação, 5+ anos, outra área)\n'
+    '"requisito_eliminatorio": true|false  -- algo que o candidato claramente não cumpre (ex.: outra profissão, formação/registro específico obrigatório, 5+ anos quando é júnior)\n'
     '"motivo": "1-2 frases em português explicando o encaixe"'
 )
 LEVELS = {"estagio": 0, "junior": 1, "pleno": 2, "senior": 3, "especialista": 4}

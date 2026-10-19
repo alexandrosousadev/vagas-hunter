@@ -10,20 +10,29 @@ from .config import CFG, DATA, ROOT
 CACHE = DATA / "perfil.json"
 
 SYSTEM = (
-    "Você é um recrutador técnico brasileiro. Leia o currículo e responda só JSON no formato: "
+    "Você é um recrutador especialista no mercado brasileiro (qualquer área: Tecnologia, Suporte, Dados, Design, Produto, Administrativo, Financeiro, RH, Marketing, Vendas, Engenharia, Saúde, etc.). "
+    "Leia o currículo e responda só JSON no formato: "
     '{"resumo": str, "cargos": [str], "cargos_semelhantes": [str], "skills": [str], '
     '"senioridade": "estagio|junior|pleno|senior", "anos_experiencia": number}. '
     '"cargos" são os cargos que a pessoa ocupa ou busca; "cargos_semelhantes" são títulos de vaga '
-    "parecidos para os quais ela também seria uma boa candidata (em português e inglês)."
+    "parecidos para os quais ela também seria uma boa candidata (em português e inglês); "
+    '"skills" são as principais ferramentas, competências técnicas e conhecimentos da área dela.'
 )
 
 KNOWN_SKILLS = [
-    "Java", "Spring Boot", "PHP", "Laravel", "Python", "Django", "FastAPI", "Flask",
-    "JavaScript", "TypeScript", "Node.js", "NestJS", "React", "React Native", "Next.js",
-    "Angular", "Vue.js", "HTML", "CSS", "Tailwind", "C#", ".NET", "Go", "Ruby", "Kotlin",
-    "Swift", "Flutter", "SQL", "MySQL", "PostgreSQL", "MongoDB", "Redis", "Oracle",
-    "Docker", "Kubernetes", "AWS", "Azure", "GCP", "Git", "Linux", "CI/CD", "GraphQL",
-    "APIs REST", "Scrum", "JUnit", "Pytest", "Selenium", "Playwright",
+    # Tech & Dados
+    "Java", "Spring Boot", "PHP", "Laravel", "Python", "JavaScript", "TypeScript", "Node.js",
+    "React", "React Native", "Angular", "Vue.js", "HTML", "CSS", "C#", ".NET", "Go", "SQL",
+    "MySQL", "PostgreSQL", "MongoDB", "Docker", "AWS", "Azure", "Git", "Linux", "APIs REST",
+    "Power BI", "Tableau", "Excel", "Pandas", "ETL", "Data Science", "Machine Learning",
+    # Suporte, Infra & QA
+    "Suporte Técnico", "Help Desk", "Service Desk", "ITIL", "Zendesk", "Jira", "Redes",
+    "Windows", "Active Directory", "QA", "Testes Automatizados", "Selenium", "Cypress",
+    # Produto, Design, Negócios, Mkt, RH, Finanças
+    "Scrum", "Kanban", "Agile", "Figma", "UI/UX", "Product Discovery", "CRM", "Salesforce",
+    "HubSpot", "RD Station", "Google Ads", "Meta Ads", "SEO", "Copywriting", "Inbound",
+    "Vendas B2B", "SDR", "BDR", "Customer Success", "Atendimento ao Cliente", "SAP", "TOTVS",
+    "Recrutamento e Seleção", "Departamento Pessoal", "Contabilidade", "Fluxo de Caixa", "Inglês",
 ]
 
 
@@ -52,7 +61,7 @@ def _fallback_profile(text: str) -> dict:
     """Extrai perfil por palavras-chave caso a IA não esteja configurada no servidor."""
     low = text.lower()
     found_skills = [s for s in KNOWN_SKILLS if re.search(rf"(?<![a-z0-9]){re.escape(s.lower())}(?![a-z0-9])", low)]
-    if "senior" in low or "sênior" in low:
+    if "senior" in low or "sênior" in low or "especialista" in low:
         level = "senior"
     elif "pleno" in low or "mid-level" in low:
         level = "pleno"
@@ -63,11 +72,20 @@ def _fallback_profile(text: str) -> dict:
 
     lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
     first_line = lines[0] if lines else "Candidato"
+    # Tenta capturar cargos das primeiras linhas do currículo
+    role_candidates = []
+    for ln in lines[1:12]:
+        if 4 <= len(ln) <= 65 and not any(x in ln.lower() for x in ("@", "http", "telefone", "phone", "idade", "cidade", "cpf")):
+            if any(w in ln.lower() for w in ("analista", "desenvolvedor", "developer", "engineer", "engenheiro", "assistente", "auxiliar", "especialista", "consultor", "designer", "suporte", "gestor", "coordenador", "vendedor", "sdr", "bdr", "qa", "dados", "data", "produto", "product", "marketing", "financeiro", "rh", "recrutador", "atendimento", "técnico", "tecnico")):
+                role_candidates.append(ln.split("|")[0].split("—")[0].strip())
+    if not role_candidates:
+        role_candidates = ["Analista", "Assistente"]
+
     return {
-        "resumo": f"Perfil extraído automaticamente do currículo de {first_line} ({len(found_skills)} skills identificadas).",
-        "cargos": ["Desenvolvedor Full Stack", "Desenvolvedor Backend", "Desenvolvedor Frontend", "Software Developer"],
-        "cargos_semelhantes": ["Full Stack Developer", "Software Engineer", "Backend Developer", "Frontend Developer"],
-        "skills": found_skills or ["Java", "PHP", "JavaScript", "React", "Angular", "SQL", "Git"],
+        "resumo": f"Perfil extraído automaticamente do currículo de {first_line} ({len(found_skills)} competências identificadas).",
+        "cargos": role_candidates[:4],
+        "cargos_semelhantes": role_candidates[:4],
+        "skills": found_skills or ["Comunicação", "Trabalho em Equipe", "Resolução de Problemas"],
         "senioridade": level,
         "anos_experiencia": 1,
     }

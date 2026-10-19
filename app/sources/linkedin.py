@@ -111,13 +111,38 @@ def _fetch_detail(c, job_id: str) -> tuple[str, int | None, bool, str]:
     return "", None, False, ""
 
 
+def _queries_from_profile() -> list[str]:
+    """Monta buscas dinâmicas no LinkedIn a partir dos cargos e skills do currículo ativo."""
+    try:
+        from .. import resume
+        prof = resume.get_profile()
+    except Exception:
+        return []
+    cargos = prof.get("cargos") or []
+    semelhantes = prof.get("cargos_semelhantes") or []
+    skills = prof.get("skills") or []
+    queries: list[str] = []
+    for role in (cargos + semelhantes)[:6]:
+        r = role.strip()
+        if r and f'"Remoto" {r}' not in queries:
+            queries.append(f'"Remoto" {r}')
+    if cargos and skills:
+        main_role = cargos[0].split()[0]
+        for sk in skills[:3]:
+            q = f'"Remoto" {main_role} {sk}'
+            if q not in queries:
+                queries.append(q)
+    return queries[:8]
+
+
 def fetch(slug: str) -> list[Job]:
-    """`slug` pode ser 'default' (usa queries do config.yaml) ou uma query específica."""
+    """`slug` pode ser 'default' (usa os cargos do currículo ativo ou config.yaml) ou uma query específica."""
     li_cfg = CFG.get("linkedin", {})
     if slug and slug != "default":
         queries = [slug]
     else:
-        queries = li_cfg.get("queries") or DEFAULT_QUERIES
+        prof_queries = _queries_from_profile()
+        queries = prof_queries or li_cfg.get("queries") or DEFAULT_QUERIES
 
     max_per_query = int(li_cfg.get("max_por_busca", 25))
     max_days = int(li_cfg.get("ultimos_dias", 5))

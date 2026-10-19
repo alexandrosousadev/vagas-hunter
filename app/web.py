@@ -285,10 +285,14 @@ async def upload_resume_route(arquivo: UploadFile = File(...), reavaliar: bool =
     def _worker():
         _task_state["running"] = True
         try:
-            _task_state["message"] = f"Currículo '{filename}' carregado! Recalculando aderência das vagas..."
+            _task_state["message"] = f"Currículo '{filename}' carregado! Buscando vagas da área e recalculando aderência..."
             con = db.connect()
             con.execute("UPDATE jobs SET score=NULL, reason=NULL, missing=NULL, seniority_ok=NULL")
             con.commit()
+            try:
+                pipeline.collect(con, company="default")
+            except Exception:
+                pass
             from . import matching
             matching.stage1(con, prof, resume.profile_query_text(prof))
             if reavaliar and llm.available():
