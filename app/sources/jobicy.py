@@ -26,7 +26,9 @@ def fetch(slug: str) -> list[Job]:
                 seen_urls.add(url)
 
                 geo_label = item.get("jobGeo") or "Brazil / LATAM"
-                level = item.get("jobLevel") or ""
+                level = (item.get("jobLevel") or "").strip()
+                if any(bad in level.lower() for bad in ("senior", "sr", "director", "lead", "principal", "staff", "mid")):
+                    continue
                 excerpt = html_to_text(item.get("jobExcerpt") or "")
                 desc_html = item.get("jobDescription") or ""
                 desc = html_to_text(desc_html) if desc_html else excerpt

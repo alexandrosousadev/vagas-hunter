@@ -93,6 +93,10 @@ def fetch(slug: str) -> list[Job]:
                 desc = (item.get("description") or "").strip()
                 if not name:
                     continue
+                low_all = f"{name} {desc}".lower()
+                if any(w in low_all for w in ("presencial", "híbrid", "hibrid", "residir em", "morar em")):
+                    if not any(w in low_all for w in ("100% remot", "100% home office", "totalmente remot")):
+                        continue
 
                 seen_ids.add(jid)
                 full_title = f"{name} — {company}" if company and company.lower() not in name.lower() else name
@@ -114,3 +118,4 @@ def fetch(slug: str) -> list[Job]:
 
 def probe(slug: str) -> int:
     return 0
+

@@ -1,10 +1,11 @@
-"""Coleta vagas Home Office na Catho (https://www.catho.com.br/vagas/...-home-office/)."""
+"""Coleta vagas Home Office na Catho (https://www.catho.com.br/vagas/...-home-office/),
+abrindo a página da vaga para confirmar que é realmente 100% Home Office / Remota."""
 import re
 import time
 
 from selectolax.lexbor import LexborHTMLParser as HTMLParser
 
-from .base import Job, client
+from .base import Job, client, html_to_text
 
 DEFAULT_SLUGS = [
     "desenvolvedor-junior-home-office",
@@ -18,8 +19,34 @@ DEFAULT_SLUGS = [
     "programador-home-office",
 ]
 
-# Ignora vagas publicadas em meses antigos (ex.: /01 a /09 quando estamos em /10)
 OLD_MONTH_RE = re.compile(r"(?:Publicada|Atualizada)\s+em\s+\d{1,2}/0[1-9]\b", re.I)
+ONSITE_WORDS = ("presencial", "híbrid", "hibrid", "residir em", "morar em", "atuação híbrida", "modelo híbrido")
+REMOTE_WORDS = ("home office", "home-office", "100% remoto", "trabalho remoto", "modelo remoto", "totalmente remoto", "vaga remota", "atuacao remota", "atuação remota")
+
+
+def _verify_catho_detail(c, url: str, title: str) -> tuple[bool, str]:
+    """Abre a página da vaga na Catho e confirma se o texto realmente diz Home Office/Remoto sem exigir presencial/híbrido."""
+    try:
+        r = c.get(url)
+        if r.status_code != 200:
+            return False, ""
+        txt = html_to_text(r.text)
+        # Corta apenas a seção principal "Sobre a vaga" até "Vagas similares"
+        main_txt = txt
+        if "Sobre a vaga" in txt:
+            main_txt = txt.split("Sobre a vaga", 1)[1]
+        if "Vagas similares" in main_txt:
+            main_txt = main_txt.split("Vagas similares", 1)[0]
+
+        low = f"{title} {main_txt}".lower()
+        if any(w in low for w in ONSITE_WORDS):
+            if not any(w in low for w in ("100% home office", "100% remot", "totalmente remot")):
+                return False, ""
+        if not any(w in low for w in REMOTE_WORDS):
+            return False, ""
+        return True, main_txt.strip()[:4000]
+    except Exception:
+        return False, ""
 
 
 def fetch(slug: str) -> list[Job]:
@@ -55,21 +82,29 @@ def fetch(slug: str) -> list[Job]:
                 if OLD_MONTH_RE.search(card_text):
                     continue
 
-                # Extrai data de publicação se presente
+                from .. import matching
+                if not matching.title_ok(title):
+                    continue
+
+                seen_urls.add(clean_url)
+                ok_remote, desc = _verify_catho_detail(c, clean_url, title)
+                time.sleep(0.25)
+                if not ok_remote:
+                    continue
+
                 m_date = re.search(r"((?:Publicada|Atualizada)\s+em\s+\d{1,2}/\d{2}|Hoje|Ontem)", card_text, re.I)
                 date_label = m_date.group(1) if m_date else "Recente"
 
-                seen_urls.add(clean_url)
                 jobs.append(
                     Job(
                         title=title,
                         url=clean_url,
-                        location=f"Brasil | Home Office ({date_label})",
-                        description=card_text,
+                        location=f"Brasil | 100% Home Office ({date_label})",
+                        description=desc or card_text,
                         remote=True,
                     )
                 )
-            time.sleep(0.35)
+            time.sleep(0.3)
 
     return jobs
 
