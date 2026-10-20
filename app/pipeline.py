@@ -20,7 +20,7 @@ def collect(con, company: str | None = None) -> int:
             con.commit()
             print(f"  ! {c['name']:<25} erro: {str(e)[:80]}")
             continue
-        kept = [j for j in jobs if matching.title_ok(j.title) and matching.location_ok(j.location, j.remote, j.description)]
+        kept = [j for j in jobs if matching.title_ok(j.title, j.description) and matching.location_ok(j.location, j.remote, j.description)]
         new = db.save_jobs(con, c["id"], kept)
         total_new += new
         print(f"  {c['name']:<25} {len(jobs):4d} vagas, {len(kept):3d} remotas/compatíveis, {new:3d} novas")

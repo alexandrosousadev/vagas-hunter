@@ -162,6 +162,32 @@ NON_DEV_EXCLUDE_WORDS = (
     "appsec",
     "sre",
     "devops",
+    "dataops",
+    "engenheiro de dados",
+    "engenheira de dados",
+    "data engineer",
+    "ai engineer",
+    "salesforce",
+    "micro 1",
+    "micro1",
+)
+
+
+EXP_3PLUS_RE = re.compile(
+    r"(\b(?:[3-9]|1[0-5])\s*\+?\s*(?:a\s*\d+\s*)?(?:anos?|years?)\s+(?:de\s+|of\s+|in\s+|em\s+)?"
+    r"(?:experiencia|experiencias|experience|atuacao|desenvolvimento|software|front|back|mobile|java|php|design)"
+    r"|(?:minimo|mais|acima|pelo menos|at least|minimum|experiencia:?)\s*(?:de\s+|of\s+)?(?:[3-9]|1[0-5])\s*(?:\+|a\s*\d+)?\s*(?:anos?|years?)"
+    r"|\b(?:[3-9]|1[0-5])\+\s*(?:anos?|years?))"
+)
+
+DESC_SENIOR_PLENO_RE = re.compile(
+    r"(\b(?:nivel|labels|detalhes)\s*[:|-]?\s*(?:[^\n]{0,25}\b)?(?:senior|pleno|especialista)\b"
+    r"|senior-software-engineer"
+    r"|\b(?:software engineer|developer|engineer|desenvolvedor)\s+(?:ii|iii|2|3)\b"
+    r"|\ba partir de r\$\s*(?:[89]|1\d)\.\d{3}"
+    r"|\b(?:desenvolvedor|developer|engenheiro|engineer|programador|product engineer|software engineer|full stack|fullstack|back end|backend|front end|frontend)"
+    r"[^.!?\n]{0,30}\b(?:senior|pleno|especialista|specialist|lead|staff)\b"
+    r"|\b(?:senior|pleno|mid level|mid-level)\s+(?:desenvolvedor|developer|engenheiro|engineer|software|analytics|backend|frontend|full stack|fullstack)\b)"
 )
 
 
@@ -174,7 +200,7 @@ def title_ok(title: str, description: str = "") -> bool:
         if _has_word(t, w.replace(".", "").replace("-", " ")):
             return False
     if description:
-        d = _norm(description[:1500])
+        d = _norm(description[:4500])
         if any(
             p in d
             for p in (
@@ -184,6 +210,11 @@ def title_ok(title: str, description: str = "") -> bool:
                 "affirmative position for people with disabilities",
             )
         ):
+            return False
+        if EXP_3PLUS_RE.search(d):
+            return False
+        is_explicit_jr = any(_has_word(t, w) for w in ("junior", "jr", "trainee", "estagio", "estagiario", "intern"))
+        if not is_explicit_jr and DESC_SENIOR_PLENO_RE.search(d):
             return False
     return True
 
