@@ -185,6 +185,8 @@ def _stats(con, user_id: int = 1):
 
 SOURCE_LABELS = {
     "linkedin": "LinkedIn (Remoto)",
+    "gupy": "Gupy (100% Remoto)",
+    "catho": "Catho (Home Office)",
     "posts": "Posts & E-mail RH",
     "eudev": "eu.dev.br (Júnior)",
     "vagascom": "Vagas.com.br (Home Office)",

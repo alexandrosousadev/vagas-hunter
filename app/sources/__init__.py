@@ -1,9 +1,11 @@
 from . import (
     ashby,
+    catho,
     eudev,
     generic_page,
     github_vagas,
     greenhouse,
+    gupy,
     inhire,
     jobicy,
     lever,
@@ -27,6 +29,8 @@ ATS = {
 # Fontes agregadoras (portais, busca pública, posts de feed e repositórios)
 EXTRA_SOURCES = {
     "linkedin": linkedin,
+    "gupy": gupy,
+    "catho": catho,
     "eudev": eudev,
     "posts": posts_web,
     "vagascom": vagascom,

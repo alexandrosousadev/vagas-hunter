@@ -1,8 +1,10 @@
 # Empresas e fontes iniciais (ats:slug  Nome).
 # Para adicionar mais: `python run.py add-empresa <url-de-carreiras | nome | ats:slug>`
 
-# --- Agregadores, Posts e Portais (Sem Login / Sem Gupy) ---
+# --- Agregadores, Posts e Portais ---
 linkedin:default                   LinkedIn (Remoto Brasil)
+gupy:remoto                        Portal Gupy (100% Remoto)
+catho:remoto                       Catho (Home Office)
 eudev:junior-remoto                eu.dev.br (Júnior Remoto BR)
 posts:default                      Posts & E-mail RH (Feed/Web)
 vagascom:remoto                    Vagas.com.br (100% Home Office)

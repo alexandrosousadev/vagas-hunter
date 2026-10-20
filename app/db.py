@@ -160,7 +160,7 @@ def dedup_key(title: str, company_name: str = "") -> str:
     clean_title = " ".join(s.split())
 
     comp = unicodedata.normalize("NFKD", company_name or "").encode("ascii", "ignore").decode().lower()
-    if any(ag in comp for ag in ("github", "linkedin", "programathor", "eu.dev", "posts", "vagas.com", "jobicy", "remotive")):
+    if any(ag in comp for ag in ("github", "linkedin", "programathor", "eu.dev", "posts", "vagas.com", "jobicy", "remotive", "gupy", "catho")):
         return clean_title
     clean_comp = re.sub(r"[^a-z0-9]+", " ", comp).strip()
     if clean_comp and clean_comp not in clean_title:
@@ -205,7 +205,7 @@ def save_jobs(con, company_id: int, jobs: list) -> int:
     seen = []
     comp_row = con.execute("SELECT ats FROM companies WHERE id=?", (company_id,)).fetchone()
     ats = comp_row["ats"] if comp_row else ""
-    is_search_aggregator = ats in ("linkedin", "posts", "vagascom", "programathor", "eudev", "jobicy", "remotive")
+    is_search_aggregator = ats in ("linkedin", "gupy", "catho", "posts", "vagascom", "programathor", "eudev", "jobicy", "remotive")
 
     for j in jobs:
         jid = job_id(j.url)
