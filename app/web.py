@@ -32,6 +32,15 @@ def _run_sync(avaliar: bool = True, limit: int = 15):
         if not con.execute("SELECT 1 FROM companies LIMIT 1").fetchone():
             companies.import_all(con, verbose=False)
         new = pipeline.collect(con)
+        # Etapa 1 (filtros + nota rápida) roda sempre, mesmo sem IA, para todos os usuários
+        from . import matching
+        for u in con.execute("SELECT id FROM users").fetchall() or [{"id": 1}]:
+            try:
+                prof = resume.get_profile(user_id=u["id"], con=con)
+                if prof:
+                    matching.stage1(con, prof, resume.profile_query_text(prof), user_id=u["id"])
+            except Exception as e:
+                print(f"  ! etapa 1 usuário {u['id']}: {e}")
         if avaliar and llm.available() and new > 0:
             _task_state["message"] = f"{new} vagas novas. Avaliando com a IA..."
             pipeline.evaluate(con, limit=limit, user_id=1)

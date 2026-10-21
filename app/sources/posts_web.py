@@ -57,17 +57,30 @@ def _dynamic_queries() -> list[str]:
     try:
         from .. import resume
         prof = resume.get_profile()
-        cargos = prof.get("cargos") or []
+        dev_words = ("desenvolvedor", "developer", "programador", "engenheiro de software", "full stack", "back", "front")
+        cargos = [c for c in (prof.get("cargos") or []) if any(w in c.lower() for w in dev_words)]
         if cargos:
             main = cargos[0]
             return [
                 f"linkedin.com/posts vaga {main} remoto curriculo",
                 f"empregos.recrutei.com.br {main} remoto",
-                f"querohome.com.br {main} remoto",
-            ] + DEFAULT_POST_QUERIES[:2]
+            ] + DEFAULT_POST_QUERIES[:3]
     except Exception:
         pass
     return DEFAULT_POST_QUERIES
+
+
+# Só aceita resultados de sites que realmente publicam vagas/posts de recrutamento
+ALLOWED_DOMAINS = ("linkedin.com/posts", "linkedin.com/feed", "recrutei.com.br", "voudehome.com.br")
+# O título/trecho precisa parecer uma vaga de tecnologia
+JOB_WORDS_RE = re.compile(
+    r"\b(vaga|vagas|contratando|hiring|oportunidade|estamos buscando|procuramos|recrutando)\b", re.I
+)
+TECH_WORDS_RE = re.compile(
+    r"\b(desenvolvedor|desenvolvedora|developer|programador|programadora|dev|full ?stack|back-?end|front-?end|"
+    r"java|php|react|angular|node|software)\b",
+    re.I,
+)
 
 
 def _linkedin_job_is_open(c, jid: str) -> bool:
@@ -117,6 +130,10 @@ def fetch(slug: str) -> list[Job]:
                 low_body = f"{title} {body}".lower()
 
                 if any(bad in low_href for bad in BLOCKED_DOMAINS):
+                    continue
+                if not any(ok in low_href for ok in ALLOWED_DOMAINS) and not LI_JOB_ID_RE.search(href):
+                    continue
+                if not (JOB_WORDS_RE.search(low_body) and TECH_WORDS_RE.search(low_body)):
                     continue
                 if any(old in low_body for old in OLD_DATE_PATTERNS):
                     continue

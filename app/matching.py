@@ -170,6 +170,22 @@ NON_DEV_EXCLUDE_WORDS = (
     "salesforce",
     "micro 1",
     "micro1",
+    "dados",
+    "data",
+    "cientista",
+    "scientist",
+    "analytics",
+    "bi",
+    "power bi",
+    "quantitativo",
+    "quantitativa",
+    "finance",
+    "operations",
+    "projetos",
+    "consultor",
+    "consultora",
+    "testing",
+    "qa",
 )
 
 
@@ -225,9 +241,11 @@ def career_match_ok(title: str, profile: dict | None = None) -> bool:
         return False
     t = _norm(title).replace(".", " ").replace("-", " ")
 
-    cargos_norm = " ".join(_norm(c) for c in (profile or {}).get("cargos", []))
+    p = profile or {}
+    cargos_norm = " ".join(_norm(c) for c in p.get("cargos", []))
+    dev_ctx = f"{cargos_norm} {_norm(p.get('resumo', ''))} {_norm(p.get('_texto', '')[:400])}"
     is_dev_profile = (not cargos_norm) or any(
-        w in cargos_norm for w in ("desenvolvedor", "developer", "programador", "software", "full stack", "backend", "frontend")
+        w in dev_ctx for w in ("desenvolvedor", "developer", "programador", "software", "full stack", "backend", "frontend")
     )
 
     if is_dev_profile:

@@ -12,6 +12,10 @@ def collect(con, company: str | None = None) -> int:
         q += " AND (slug=? OR lower(name)=lower(?))"
         args = (company, company)
     total_new = 0
+    try:
+        profile = resume.get_profile(user_id=1, con=con) or None
+    except Exception:
+        profile = None
     for c in con.execute(q, args).fetchall():
         try:
             jobs = sources.fetch(c["ats"], c["slug"])
@@ -20,7 +24,12 @@ def collect(con, company: str | None = None) -> int:
             con.commit()
             print(f"  ! {c['name']:<25} erro: {str(e)[:80]}")
             continue
-        kept = [j for j in jobs if matching.title_ok(j.title, j.description) and matching.location_ok(j.location, j.remote, j.description)]
+        kept = [
+            j for j in jobs
+            if matching.title_ok(j.title, j.description)
+            and matching.career_match_ok(j.title, profile)
+            and matching.location_ok(j.location, j.remote, j.description)
+        ]
         new = db.save_jobs(con, c["id"], kept)
         total_new += new
         print(f"  {c['name']:<25} {len(jobs):4d} vagas, {len(kept):3d} remotas/compatíveis, {new:3d} novas")

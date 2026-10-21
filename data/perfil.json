@@ -1,15 +1,18 @@
 {
-  "resumo": "Alexandro Sousa de Brito é um desenvolvedor full stack com experiência em PHP, Java, Angular, React e React Native. Possui conhecimento em APIs RESTful, bancos de dados MySQL e PostgreSQL, e trabalha em metodologias ágeis. Busca oportunidades de desenvolvimento full stack.",
+  "resumo": "Desenvolvedor de Software Full Stack Júnior (PHP, Java/Spring Boot, Angular, React) com 1 ano e 7 meses de experiência.",
   "cargos": [
-    "Desenvolvedor de Software Full Stack Trainee",
-    "Desenvolvedor de Software Full Stack"
+    "Desenvolvedor Full Stack Júnior",
+    "Desenvolvedor Back-end Júnior",
+    "Desenvolvedor Java Júnior",
+    "Desenvolvedor PHP Júnior",
+    "Desenvolvedor Front-end Júnior"
   ],
   "cargos_semelhantes": [
-    "Desenvolvedor Full Stack",
-    "Full Stack Developer",
-    "Desenvolvedor Web Full Stack",
-    "Desenvolvedor de Aplicações Web Full Stack",
-    "Desenvolvedor de Aplicativos Móveis Full Stack"
+    "Desenvolvedor de Software",
+    "Programador Júnior",
+    "Engenheiro de Software Júnior",
+    "Desenvolvedor Web",
+    "Trainee Desenvolvedor"
   ],
   "skills": [
     "Java",
@@ -17,22 +20,21 @@
     "PHP",
     "JavaScript",
     "TypeScript",
-    "Angular",
     "React",
     "React Native",
+    "Angular",
     "HTML",
     "CSS",
+    "SQL",
     "MySQL",
     "PostgreSQL",
-    "APIs REST",
     "Git",
+    "APIs REST",
     "Scrum",
-    "Trabalho em Equipe",
-    "Comunicação",
-    "Resolução de Problemas"
+    "Inglês"
   ],
-  "senioridade": "pleno",
-  "anos_experiencia": 1.5,
+  "senioridade": "junior",
+  "anos_experiencia": 1,
   "_mtime": 1792246297.3266902,
-  "_texto": "ALEXANDRO SOUSA DE BRITO\nDesenvolvedor de Software Full Stack (Java (cid:127) PHP (cid:127) Angular (cid:127) React (cid:127) SQL)\nIdade: 26 | Cidade: Ubajara | Estado: Ceará\nPERFIL PROFISSIONAL\nDesenvolvedor de Software Full Stack com perfil altamente analítico, consistente e focado em resolução de problemas\ncomplexos. Experiência prática de mais de 1 ano e meio no desenvolvimento e manutenção de sistemas web e mobile\nutilizando ecossistemas robustos como PHP e Java no back-end, aliados a frameworks modernos no front-end\n(Angular, React e React Native). Vivência em ambientes ágeis (Scrum), depuração de código em produção,\nmodelagem e otimização de consultas em bancos de dados relacionais (PostgreSQL e MySQL) e\nconstrução/consumo de APIs RESTful.\nEDUCAÇÃO E FORMAÇÃO\nGraduação em Análise e Desenvolvimento de Sistemas – Centro Universitário Internacional (UNINTER)\nPeríodo: 01/2024 – Conclusão em 06/2026 (Concluído)\nCurso Profissionalizante em Desenvolvimento de Software Java – Mesttra\nPeríodo: 08/2024 – 02/2025\nEXPERIÊNCIA PROFISSIONAL\nUitec | Desenvolvedor de Software Full Stack Trainee — Mar/2025 – Out/2026\n(cid:127) Desenvolvimento e manutenção ponta a ponta (Full Stack) de aplicações web e mobile utilizando PHP 7, Angular 15,\nReact e React Native.\n(cid:127) Diagnóstico, isolamento e correção de bugs em produção através de análise técnica de logs e monitoramento de\nfalhas.\n(cid:127) Construção e consumo de APIs RESTful com foco na validação de requisições HTTP, manipulação e integridade de\ndados.\n(cid:127) Otimização de consultas, queries e modelagem de dados relacionais em MySQL e PostgreSQL.\n(cid:127) Atuação em equipe com metodologias ágeis (Scrum), controle de versão com Git, pull requests, code reviews e\ndeploys.\nPROJETOS PESSOAIS\nRaízes do Nordeste API — Desenvolvedor Backend (Java / API RESTful)\n(cid:127) Criação de API RESTful focada em catalogação cultural, aplicando padrões de arquitetura em camadas.\n(cid:127) Implementação de rotas, tratamento de exceções e persistência de dados estruturados.\nIDIOMAS\n(cid:127) Português: Nativo | (cid:127) Inglês: Nível intermediário\nHABILIDADES E COMPETÊNCIAS\nJava | Spring Boot | PHP | JavaScript | TypeScript | Angular | React | React Native | HTML | CSS | MySQL | PostgreSQL\n| APIs REST | Git | Scrum | Trabalho em Equipe | Comunicação | Resolução de Problemas"
+  "_texto": "ALEXANDRO SOUSA DE BRITO\nDesenvolvedor de Software Full Stack (Java (cid:127) PHP (cid:127) Angular (cid:127) React (cid:127) SQL)\nIdade: 26 | Cidade: Ubajara | Estado: Ceará\nEmail: alexandrosousa01@gmail.com | Telefone: +55 88 99784-8189\nLinkedIn: linkedin.com/in/alexandrosousa009 | GitHub: github.com/alexandrosousadev\nPERFIL PROFISSIONAL\nDesenvolvedor de Software Full Stack com perfil altamente analítico, consistente e focado em resolução de problemas\ncomplexos. Experiência prática de mais de 1 ano e meio no desenvolvimento e manutenção de sistemas web e mobile\nutilizando ecossistemas robustos como PHP e Java no back-end, aliados a frameworks modernos no front-end\n(Angular, React e React Native). Vivência em ambientes ágeis (Scrum), depuração de código em produção,\nmodelagem e otimização de consultas em bancos de dados relacionais (PostgreSQL e MySQL) e\nconstrução/consumo de APIs RESTful.\nEDUCAÇÃO E FORMAÇÃO\nGraduação em Análise e Desenvolvimento de Sistemas – Centro Universitário Internacional (UNINTER)\nPeríodo: 01/2024 – Conclusão em 06/2026 (Concluído)\nCurso Profissionalizante em Desenvolvimento de Software Java – Mesttra\nPeríodo: 08/2024 – 02/2025\nEXPERIÊNCIA PROFISSIONAL\nUitec | Desenvolvedor de Software Full Stack Trainee — Mar/2025 – Out/2026\n(cid:127) Desenvolvimento e manutenção ponta a ponta (Full Stack) de aplicações web e mobile utilizando PHP 7, Angular 15,\nReact e React Native.\n(cid:127) Diagnóstico, isolamento e correção de bugs em produção através de análise técnica de logs e monitoramento de\nfalhas.\n(cid:127) Construção e consumo de APIs RESTful com foco na validação de requisições HTTP, manipulação e integridade de\ndados.\n(cid:127) Otimização de consultas, queries e modelagem de dados relacionais em MySQL e PostgreSQL.\n(cid:127) Atuação em equipe com metodologias ágeis (Scrum), controle de versão com Git, pull requests, code reviews e\ndeploys.\nPROJETOS PESSOAIS\nRaízes do Nordeste API — Desenvolvedor Backend (Java / API RESTful)\n(cid:127) Criação de API RESTful focada em catalogação cultural, aplicando padrões de arquitetura em camadas.\n(cid:127) Implementação de rotas, tratamento de exceções e persistência de dados estruturados.\nIDIOMAS\n(cid:127) Português: Nativo | (cid:127) Inglês: Nível intermediário\nHABILIDADES E COMPETÊNCIAS\nJava | Spring Boot | PHP | JavaScript | TypeScript | Angular | React | React Native | HTML | CSS | MySQL | PostgreSQL\n| APIs REST | Git | Scrum | Trabalho em Equipe | Comunicação | Resolução de Problemas"
 }
