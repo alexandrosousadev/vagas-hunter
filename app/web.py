@@ -424,6 +424,9 @@ async def sync_status_route(request: Request):
     for jid, st in payload.items():
         if st not in allowed or not isinstance(jid, str):
             continue
+        # Ignora vagas que já foram removidas do banco (evita erro de chave estrangeira no Turso)
+        if not con.execute("SELECT 1 FROM jobs WHERE id=?", (jid,)).fetchone():
+            continue
         row = con.execute(
             "SELECT status FROM user_jobs WHERE user_id=? AND job_id=?",
             (user_id, jid),
