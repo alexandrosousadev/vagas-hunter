@@ -131,7 +131,10 @@ def _ensure_default_user(con: sqlite3.Connection):
         con.commit()
 
 
-def connect() -> sqlite3.Connection:
+def connect():
+    from . import turso_db
+    if turso_db.is_turso_enabled():
+        return turso_db.TursoConnection(turso_db.TURSO_URL, turso_db.TURSO_TOKEN)
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
     con.executescript(SCHEMA)
