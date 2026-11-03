@@ -283,5 +283,65 @@ def fetch(slug: str) -> list[Job]:
     return jobs
 
 
+def prune_stale_open_jobs(con) -> int:
+    """Revalida vagas abertas do LinkedIn no banco e fecha as que encerraram, envelheceram (>5d) ou passaram de max_candidatos."""
+    li_cfg = CFG.get("linkedin", {})
+    max_days = int(li_cfg.get("ultimos_dias", 5))
+    max_applicants = int(li_cfg.get("max_candidatos", 100))
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=max_days)).isoformat(timespec="seconds")
+
+    rows = con.execute(
+        """
+        SELECT j.id, j.url, j.location, j.first_seen, j.posted_at
+        FROM jobs j
+        JOIN companies c ON c.id = j.company_id
+        WHERE j.open = 1 AND c.ats = 'linkedin'
+        """
+    ).fetchall()
+    if not rows:
+        return 0
+
+    to_close: list[str] = []
+    with client() as c:
+        for r in rows:
+            loc = r["location"] or ""
+            # 1) Se já tem +100 candidatos gravado no texto do local, ou first_seen > max_days, fecha sem precisar de HTTP
+            m_cand = re.search(r"([+~]?)(\d+)\s*candidatos", loc)
+            if max_applicants > 0 and m_cand:
+                is_plus = m_cand.group(1) == "+"
+                num = int(m_cand.group(2))
+                if num > max_applicants or (is_plus and num >= max_applicants):
+                    to_close.append(r["id"])
+                    continue
+            if r["first_seen"] and r["first_seen"] < cutoff:
+                to_close.append(r["id"])
+                continue
+
+            # 2) Consulta o endpoint público da vaga no LinkedIn para ver se fechou ou passou do limite agora
+            m_id = re.search(r"/jobs/view/(?:[^/?#]*-)?(\d+)", r["url"] or "")
+            if not m_id:
+                continue
+            jid = m_id.group(1)
+            desc, num_app, is_over, ago_txt, is_closed = _fetch_detail(c, jid)
+            time.sleep(0.5)
+            if is_closed or not desc:
+                to_close.append(r["id"])
+                continue
+            if any(old_w in ago_txt.lower() for old_w in ("semana", "week", "mês", "mes", "month")):
+                to_close.append(r["id"])
+                continue
+            if max_applicants > 0 and num_app is not None:
+                if (is_over and num_app >= max_applicants) or num_app > max_applicants:
+                    to_close.append(r["id"])
+                    continue
+
+    if to_close:
+        marks = ",".join("?" * len(to_close))
+        con.execute(f"UPDATE jobs SET open=0 WHERE id IN ({marks})", to_close)
+        con.commit()
+    return len(to_close)
+
+
+
 def probe(slug: str) -> int:
     return 0

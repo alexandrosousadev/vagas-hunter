@@ -189,6 +189,7 @@ NON_DEV_EXCLUDE_WORDS = (
     "consultor",
     "consultora",
     "testing",
+    "tester",
     "qa",
 )
 
@@ -215,7 +216,7 @@ def title_ok(title: str, description: str = "") -> bool:
     t = _norm(title).replace(".", " ").replace("-", " ")
     if any(sub in t for sub in ALWAYS_EXCLUDE_SUBSTRINGS):
         return False
-    extra_words = ["pcd", "specialist", "especialista", "intermediate", "middle", "pleno", "mid"]
+    extra_words = ["pcd", "specialist", "especialista", "intermediate", "middle", "midlevel", "pleno", "mid"]
     for w in list(CFG.get("excluir_titulos", [])) + extra_words:
         if _has_word(t, w.replace(".", "").replace("-", " ")):
             return False
@@ -327,8 +328,12 @@ def stage1(con, profile: dict, query_text: str, user_id: int = 1) -> int:
         "senior": ["senior", "sr", "staff", "lead", "principal"],
     }.get(_norm(profile.get("senioridade", "")), [])
     n = 0
-    for r in con.execute("SELECT id, title, description, embedding FROM jobs WHERE open=1").fetchall():
-        if not title_ok(r["title"], r["description"] or "") or not career_match_ok(r["title"], profile):
+    for r in con.execute("SELECT id, title, location, description, embedding FROM jobs WHERE open=1").fetchall():
+        if (
+            not title_ok(r["title"], r["description"] or "")
+            or not career_match_ok(r["title"], profile)
+            or not location_ok(r["location"] or "", None, r["description"] or "")
+        ):
             s1_val = 0.0
         else:
             text = _norm(f"{r['title']} {r['description'] or ''}")

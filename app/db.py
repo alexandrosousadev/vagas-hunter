@@ -226,6 +226,18 @@ def save_jobs(con, company_id: int, jobs: list) -> int:
     if seen and not is_search_aggregator:
         marks = ",".join("?" * len(seen))
         con.execute(f"UPDATE jobs SET open=0 WHERE company_id=? AND id NOT IN ({marks})", (company_id, *seen))
+    elif is_search_aggregator:
+        # Fecha vagas de agregadores que não são vistas há mais de 5 dias (e que o usuário não favoritou/candidatou)
+        from datetime import timedelta
+        cutoff_agg = (datetime.now(timezone.utc) - timedelta(days=5)).isoformat(timespec="seconds")
+        con.execute(
+            """
+            UPDATE jobs SET open=0
+            WHERE company_id=? AND open=1 AND last_seen < ?
+              AND COALESCE(status, 'nova') NOT IN ('interessa', 'candidatei')
+            """,
+            (company_id, cutoff_agg),
+        )
 
     con.execute("UPDATE companies SET last_fetched=?, last_error=NULL WHERE id=?", (ts, company_id))
     con.commit()

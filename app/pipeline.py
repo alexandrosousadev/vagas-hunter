@@ -31,6 +31,14 @@ def collect(con, company: str | None = None) -> int:
             and matching.location_ok(j.location, j.remote, j.description)
         ]
         new = db.save_jobs(con, c["id"], kept)
+        if c["ats"] == "linkedin":
+            try:
+                from .sources import linkedin
+                closed = linkedin.prune_stale_open_jobs(con)
+                if closed:
+                    print(f"    ↳ {closed} vagas antigas/encerradas/+100 cand do LinkedIn fechadas")
+            except Exception:
+                pass
         total_new += new
         print(f"  {c['name']:<25} {len(jobs):4d} vagas, {len(kept):3d} remotas/compatíveis, {new:3d} novas")
         time.sleep(pause)
