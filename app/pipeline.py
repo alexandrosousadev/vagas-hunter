@@ -30,7 +30,7 @@ def collect(con, company: str | None = None) -> int:
             and matching.career_match_ok(j.title, profile)
             and matching.location_ok(j.location, j.remote, j.description)
         ]
-        new = db.save_jobs(con, c["id"], kept)
+        new = db.save_jobs(con, c["id"], kept, fetched_any=len(jobs) > 0)
         if c["ats"] == "linkedin":
             try:
                 from .sources import linkedin

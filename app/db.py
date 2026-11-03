@@ -201,7 +201,7 @@ def deduplicate_open_jobs(con) -> int:
     return len(to_close)
 
 
-def save_jobs(con, company_id: int, jobs: list) -> int:
+def save_jobs(con, company_id: int, jobs: list, fetched_any: bool = True) -> int:
     """Insere vagas novas, atualiza last_seen das existentes e marca como fechadas as que sumiram."""
     ts = now()
     new = 0
@@ -222,10 +222,13 @@ def save_jobs(con, company_id: int, jobs: list) -> int:
             )
             new += 1
 
-    # Só fecha vagas que sumiram quando a fonte retornou resultados e é um ATS de lista completa
-    if seen and not is_search_aggregator:
-        marks = ",".join("?" * len(seen))
-        con.execute(f"UPDATE jobs SET open=0 WHERE company_id=? AND id NOT IN ({marks})", (company_id, *seen))
+    # Fecha vagas que sumiram quando a fonte é um ATS de lista completa e a requisição da empresa funcionou
+    if not is_search_aggregator and fetched_any:
+        if seen:
+            marks = ",".join("?" * len(seen))
+            con.execute(f"UPDATE jobs SET open=0 WHERE company_id=? AND id NOT IN ({marks})", (company_id, *seen))
+        else:
+            con.execute("UPDATE jobs SET open=0 WHERE company_id=?", (company_id,))
     elif is_search_aggregator:
         # Fecha vagas de agregadores que não são vistas há mais de 5 dias (e que o usuário não favoritou/candidatou)
         from datetime import timedelta

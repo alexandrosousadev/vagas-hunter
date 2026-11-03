@@ -206,6 +206,7 @@ DESC_SENIOR_PLENO_RE = re.compile(
     r"|senior-software-engineer"
     r"|\b(?:software engineer|developer|engineer|desenvolvedor)\s+(?:ii|iii|2|3)\b"
     r"|\ba partir de r\$\s*(?:[89]|1\d)\.\d{3}"
+    r"|\bbrl\s*(?:[89]|1\d)\s*(?:-\s*\d+\s*)?k\b"
     r"|\b(?:desenvolvedor|developer|engenheiro|engineer|programador|product engineer|software engineer|full stack|fullstack|back end|backend|front end|frontend)"
     r"[^.!?\n]{0,30}\b(?:senior|pleno|especialista|specialist|lead|staff)\b"
     r"|\b(?:senior|pleno|mid level|mid-level)\s+(?:desenvolvedor|developer|engenheiro|engineer|software|analytics|backend|frontend|full stack|fullstack)\b)"
@@ -235,7 +236,7 @@ def title_ok(title: str, description: str = "") -> bool:
         if EXP_3PLUS_RE.search(d):
             return False
         is_explicit_jr = any(_has_word(t, w) for w in ("junior", "jr", "trainee", "estagio", "estagiario", "intern"))
-        if not is_explicit_jr and DESC_SENIOR_PLENO_RE.search(d):
+        if not is_explicit_jr and (DESC_SENIOR_PLENO_RE.search(d) or DESC_SENIOR_PLENO_RE.search(t)):
             return False
     return True
 
