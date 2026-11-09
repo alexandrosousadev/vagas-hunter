@@ -124,7 +124,7 @@ def _query_jobs(
         params.append(company_id)
 
     if ats == "ats_direto":
-        sql += " AND c.ats IN ('greenhouse', 'lever', 'ashby', 'workable', 'inhire', 'generic')"
+        sql += " AND c.ats IN ('greenhouse', 'lever', 'ashby', 'workable', 'inhire', 'generic', 'mosyle')"
     elif ats:
         sql += " AND c.ats = ?"
         params.append(ats)
@@ -558,11 +558,18 @@ def task_status():
 
 
 @app.post("/empresas/adicionar")
-def add_company_route(entrada: str = Form(...), nome: str = Form("")):
+def add_company_route(request: Request, entrada: str = Form(...), nome: str = Form("")):
+    user = _current_user(request)
+    user_id = user[0] if user else 1
     try:
         con = db.connect()
         cid, ats, slug = companies.add(con, entrada.strip(), nome.strip() or None)
-        return JSONResponse({"ok": True, "id": cid, "ats": ats, "slug": slug})
+        new = pipeline.collect(con, slug)
+        from . import matching
+        prof = resume.get_profile(user_id=user_id, con=con)
+        if prof:
+            matching.stage1(con, prof, resume.profile_query_text(prof), user_id=user_id)
+        return JSONResponse({"ok": True, "id": cid, "ats": ats, "slug": slug, "new": new})
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
 

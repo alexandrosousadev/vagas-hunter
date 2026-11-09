@@ -94,3 +94,50 @@ inhire:principia           Principia
 inhire:queroeducacao       Quero Educação (Qeevo)
 inhire:venturus            Venturus
 inhire:vertigo             Vertigo Tecnologia
+mosyle:default             Mosyle
+greenhouse:sumup           SumUp
+greenhouse:ebury           Ebury Brazil
+greenhouse:thoughtworks    Thoughtworks
+greenhouse:wizeline        Wizeline
+greenhouse:clara           Clara
+greenhouse:mobiauto        Mobiauto
+greenhouse:hiper           Hiper
+ashby:modal                Banco Modal
+ashby:suno                 Suno Research
+ashby:warren               Warren Investimentos
+ashby:kamino               Kamino
+ashby:anima                Ânima Educação
+ashby:belvo                Belvo
+ashby:nomad                Nomad
+ashby:darwin               Darwin AI
+lever:kavak                Kavak
+inhire:db1                 DB1 Global Software
+inhire:contabilizei        Contabilizei
+inhire:superlogica         Superlógica
+inhire:vhsys               vhsys
+inhire:qive                Qive (Arquivei)
+inhire:luby                Luby Software
+inhire:avenue              Avenue
+inhire:turbi               Turbi
+inhire:webmotors           Webmotors
+inhire:cardapioweb         Cardápio Web
+inhire:zig                 Zig (ZigPay)
+inhire:housi               Housi
+inhire:cashme              CashMe
+inhire:pottencial          Pottencial Seguradora
+inhire:icatu               Icatu Seguros
+inhire:cubos               Cubos Tecnologia
+inhire:infleet             Infleet
+inhire:sallve              Sallve
+inhire:piposaude           Pipo Saúde
+inhire:townsq              TownSq
+inhire:instacarro          InstaCarro
+inhire:atlantico           Instituto Atlântico
+inhire:klavi               Klavi
+inhire:raiadrogasil        RD Saúde (RaiaDrogasil)
+inhire:amaro               AMARO
+inhire:tera                Tera
+inhire:yampi               Yampi
+inhire:sidia               Sidia Instituto
+inhire:vitru               Vitru Educação (Uniasselvi)
+inhire:riachuelo           Riachuelo (Midway)

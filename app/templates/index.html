@@ -44,6 +44,11 @@
           📄 Enviar Currículo (PDF/DOCX)
           <input type="file" accept=".pdf,.docx" class="hidden" onchange="uploadResume(this)" />
         </label>
+        <button type="button" onclick="addCompanyModal()"
+                class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-300 hover:bg-amber-500/20"
+                title="Adicionar página de carreiras ou nome de empresa">
+          ➕ Adicionar Empresa
+        </button>
         <button onclick="runAction('/acoes/avaliar', {limite: 20})"
                 class="rounded-lg border border-indigo-500/40 bg-indigo-500/10 px-3 py-2 text-xs font-semibold text-indigo-300 hover:bg-indigo-500/20">
           ⚡ Avaliar +20 com IA
@@ -264,6 +269,31 @@
       const r = await fetch('/conta/senha', { method: 'POST', body: fd });
       const d = await r.json();
       alert(d.message || d.error || 'Pronto');
+    }
+
+    async function addCompanyModal() {
+      const entrada = prompt('Cole a URL da página de carreiras da empresa (ex: https://empresa.com/careers) ou digite o nome:');
+      if (!entrada || !entrada.trim()) return;
+      const nome = prompt('Nome da empresa (opcional, deixe em branco para detectar automaticamente):') || '';
+      const banner = document.getElementById('task-banner');
+      const msg = document.getElementById('task-msg');
+      banner.classList.remove('hidden');
+      msg.textContent = 'Detectando portal e coletando vagas da empresa...';
+      try {
+        const fd = new URLSearchParams({ entrada: entrada.trim(), nome: nome.trim() });
+        const r = await fetch('/empresas/adicionar', { method: 'POST', body: fd });
+        const d = await r.json();
+        if (!d.ok) {
+          alert(d.error || 'Não foi possível adicionar a empresa.');
+          banner.classList.add('hidden');
+          return;
+        }
+        alert(`Empresa cadastrada (${d.ats}:${d.slug})! ${d.new || 0} vagas compatíveis coletadas.`);
+        window.location.reload();
+      } catch (e) {
+        alert('Erro ao adicionar empresa: ' + e);
+        banner.classList.add('hidden');
+      }
     }
 
     async function runAction(url, params) {

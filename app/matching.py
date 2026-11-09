@@ -70,10 +70,10 @@ DEV_REQUIRED_WORDS = (
     "development",
     "dev",
     "software",
-    "engineer",
-    "engenheiro",
-    "engenheira",
-    "engenharia",
+    "software engineer",
+    "engenheiro de software",
+    "engenheira de software",
+    "engenharia de software",
     "programador",
     "programadora",
     "programacao",
@@ -199,6 +199,20 @@ NON_DEV_EXCLUDE_WORDS = (
     "testing",
     "tester",
     "qa",
+    "q a",
+    "professor",
+    "professora",
+    "tutor",
+    "tutora",
+    "protheus",
+    "advpl",
+    "oracle",
+    "solutions engineer",
+    "engenheiro de solucoes",
+    "treinamento e desenvolvimento",
+    "desenvolvimento de materiais",
+    "desenvolvimento humano",
+    "desenvolvimento organizacional",
 )
 
 
@@ -214,7 +228,7 @@ DESC_SENIOR_PLENO_RE = re.compile(
     r"|senior-software-engineer"
     r"|\b(?:software engineer|developer|engineer|desenvolvedor)\s+(?:ii|iii|2|3)\b"
     r"|\ba partir de r\$\s*(?:[89]|1\d)\.\d{3}"
-    r"|\bbrl\s*(?:[89]|1\d)\s*(?:-\s*\d+\s*)?k\b"
+    r"|\bbrl\s*(?:[89]|1\d)(?:\s*-\s*\d+)?\s*k\b"
     r"|\b(?:desenvolvedor|developer|engenheiro|engineer|programador|product engineer|software engineer|full stack|fullstack|back end|backend|front end|frontend)"
     r"[^.!?\n]{0,30}\b(?:senior|pleno|especialista|specialist|lead|staff)\b"
     r"|\b(?:senior|pleno|mid level|mid-level)\s+(?:desenvolvedor|developer|engenheiro|engineer|software|analytics|backend|frontend|full stack|fullstack)\b)"
@@ -335,7 +349,7 @@ def stage1(con, profile: dict, query_text: str, user_id: int = 1) -> int:
               for w in _norm(c).split() if len(w) > 3}
     level_words = {
         "estagio": ["estagio", "estagiario", "intern", "internship"],
-        "junior": ["jr", "junior", "trainee", "entry level", "associate"],
+        "junior": ["jr", "junior", "trainee", "entry level", "associate", "levels i", "niveis i", "level i", "nivel i"],
         "pleno": ["pleno", "pl", "mid", "mid level", "ii"],
         "senior": ["senior", "sr", "staff", "lead", "principal"],
     }.get(_norm(profile.get("senioridade", "")), [])
