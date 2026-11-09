@@ -213,6 +213,10 @@ NON_DEV_EXCLUDE_WORDS = (
     "desenvolvimento de materiais",
     "desenvolvimento humano",
     "desenvolvimento organizacional",
+    "capacitacao",
+    "curso",
+    "automacao",
+    "automation",
 )
 
 

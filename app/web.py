@@ -124,7 +124,7 @@ def _query_jobs(
         params.append(company_id)
 
     if ats == "ats_direto":
-        sql += " AND c.ats IN ('greenhouse', 'lever', 'ashby', 'workable', 'inhire', 'generic', 'mosyle')"
+        sql += " AND c.ats IN ('greenhouse', 'lever', 'ashby', 'workable', 'inhire', 'generic', 'mosyle', 'solides', 'recrutei')"
     elif ats:
         sql += " AND c.ats = ?"
         params.append(ats)
@@ -209,6 +209,9 @@ SOURCE_LABELS = {
     "ashby": "Ashby (Site Empresa)",
     "workable": "Workable (Site Empresa)",
     "mosyle": "Mosyle (Site Empresa)",
+    "solides": "Sólides (PMEs / Software Houses)",
+    "recrutei": "Recrutei (PMEs / Software Houses)",
+    "generic": "Site Próprio da Empresa",
 }
 
 
@@ -515,7 +518,12 @@ def trigger_collect(request: Request, avaliar: bool = Form(True)):
         try:
             _task_state["message"] = "Coletando vagas nas empresas..."
             con = db.connect()
+            companies.import_all(con, verbose=False)
             new = pipeline.collect(con)
+            from . import matching
+            prof = resume.get_profile(user_id=user_id, con=con)
+            if prof:
+                matching.stage1(con, prof, resume.profile_query_text(prof), user_id=user_id)
             if avaliar and llm.available():
                 _task_state["message"] = f"{new} vagas novas. Avaliando com a IA..."
                 pipeline.evaluate(con, limit=15, user_id=user_id)

@@ -24,8 +24,8 @@ class Job:
     remote: bool | None = None   # quando o ATS informa explicitamente
 
 
-def client() -> httpx.Client:
-    timeout = CFG.get("coleta", {}).get("timeout_segundos", 25)
+def client(timeout: float | None = None) -> httpx.Client:
+    timeout = timeout or CFG.get("coleta", {}).get("timeout_segundos", 25)
     return httpx.Client(
         headers={
             "User-Agent": UA,

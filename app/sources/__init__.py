@@ -13,7 +13,9 @@ from . import (
     mosyle,
     posts_web,
     programathor,
+    recrutei,
     remotive,
+    solides,
     vagascom,
     workable,
 )
@@ -41,6 +43,8 @@ EXTRA_SOURCES = {
     "programathor": programathor,
     "generic": generic_page,
     "mosyle": mosyle,
+    "solides": solides,
+    "recrutei": recrutei,
 }
 
 

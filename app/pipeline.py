@@ -42,6 +42,7 @@ def collect(con, company: str | None = None) -> int:
         total_new += new
         print(f"  {c['name']:<25} {len(jobs):4d} vagas, {len(kept):3d} remotas/compatíveis, {new:3d} novas")
         time.sleep(pause)
+    db.deduplicate_open_jobs(con)
     return total_new
 
 
