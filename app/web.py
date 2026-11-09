@@ -208,6 +208,7 @@ SOURCE_LABELS = {
     "lever": "Lever (Site Empresa)",
     "ashby": "Ashby (Site Empresa)",
     "workable": "Workable (Site Empresa)",
+    "mosyle": "Mosyle (Site Empresa)",
 }
 
 

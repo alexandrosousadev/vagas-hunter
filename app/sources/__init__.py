@@ -10,6 +10,7 @@ from . import (
     jobicy,
     lever,
     linkedin,
+    mosyle,
     posts_web,
     programathor,
     remotive,
@@ -39,6 +40,7 @@ EXTRA_SOURCES = {
     "github": github_vagas,
     "programathor": programathor,
     "generic": generic_page,
+    "mosyle": mosyle,
 }
 
 

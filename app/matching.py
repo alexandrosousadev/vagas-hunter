@@ -22,8 +22,16 @@ FOREIGN = ["united states", "usa", "us", "u s", "canada", "mexico", "colombia", 
            "barcelona", "lisbon", "ciudad de mexico", "bogota", "buenos aires", "santiago", "manhattan"]
 # frases na descrição que indicam vaga remota quando o campo de local não diz
 DESC_REMOTE = ["100% remot", "totalmente remot", "trabalho remoto", "modelo remoto", "modalidade remota",
-               "fully remote", "remote-first", "remote first", "home office", "work from anywhere"]
+               "posicao remota", "vaga remota", "cargo remoto", "atuacao remota", "regime remoto",
+               "remote position", "remote role", "fully remote", "remote-first", "remote first", "home office",
+               "work from anywhere"]
 DESC_NOT_REMOTE = ["hibrid", "hybrid", "presencial", "on-site", "dias no escritorio", "days in the office"]
+
+# Faixa de níveis que começa no I (júnior): "i & ii", "i e ii", "i/ii", "i a iii", "1 e 2", "jr/pl", "junior/pleno"
+LEVEL_RANGE_RE = re.compile(
+    r"\b(?:niveis?\s+|levels?\s+)?(?:i|1)\s*(?:&|e|/|a|and|ou|,)\s*(?:ii|iii|2|3)\b(?:\s*(?:&|e|/|,)\s*(?:iii|3)\b)?"
+    r"|\b(?:jr|junior)\s*(?:/|&|e|ou|a)\s*(?:pl|pleno)\b"
+)
 
 
 def _norm(s: str) -> str:
@@ -217,9 +225,12 @@ def title_ok(title: str, description: str = "") -> bool:
     t = _norm(title).replace(".", " ").replace("-", " ")
     if any(sub in t for sub in ALWAYS_EXCLUDE_SUBSTRINGS):
         return False
+    # Faixas que incluem o nível I (ex.: "Níveis I & II", "I/II", "I a III", "Jr/Pl") aceitam júnior:
+    # remove a faixa antes de checar as palavras proibidas (ii, iii, pleno...).
+    t_check = LEVEL_RANGE_RE.sub(" junior ", t)
     extra_words = ["pcd", "specialist", "especialista", "intermediate", "middle", "midlevel", "pleno", "mid"]
     for w in list(CFG.get("excluir_titulos", [])) + extra_words:
-        if _has_word(t, w.replace(".", "").replace("-", " ")):
+        if _has_word(t_check, w.replace(".", "").replace("-", " ")):
             return False
     if description:
         d = _norm(description[:4500])
