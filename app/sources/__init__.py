@@ -11,6 +11,7 @@ from . import (
     lever,
     linkedin,
     mosyle,
+    nerdin,
     posts_web,
     programathor,
     recrutei,
@@ -44,6 +45,7 @@ EXTRA_SOURCES = {
     "generic": generic_page,
     "mosyle": mosyle,
     "solides": solides,
+    "nerdin": nerdin,
     "recrutei": recrutei,
 }
 

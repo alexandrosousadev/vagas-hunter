@@ -124,7 +124,7 @@ def _query_jobs(
         params.append(company_id)
 
     if ats == "ats_direto":
-        sql += " AND c.ats IN ('greenhouse', 'lever', 'ashby', 'workable', 'inhire', 'generic', 'mosyle', 'solides', 'recrutei')"
+        sql += " AND c.ats IN ('greenhouse', 'lever', 'ashby', 'workable', 'inhire', 'generic', 'mosyle', 'solides', 'recrutei', 'nerdin')"
     elif ats:
         sql += " AND c.ats = ?"
         params.append(ats)
@@ -211,6 +211,7 @@ SOURCE_LABELS = {
     "mosyle": "Mosyle (Site Empresa)",
     "solides": "Sólides (PMEs / Software Houses)",
     "recrutei": "Recrutei (PMEs / Software Houses)",
+    "nerdin": "Nerdin (TI Home Office)",
     "generic": "Site Próprio da Empresa",
 }
 

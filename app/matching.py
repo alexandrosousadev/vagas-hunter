@@ -215,6 +215,12 @@ NON_DEV_EXCLUDE_WORDS = (
     "desenvolvimento organizacional",
     "capacitacao",
     "curso",
+    "intercambio",
+    "expert",
+    "stem",
+    "bioscience",
+    "dynamics",
+    "game developer",
     "automacao",
     "automation",
 )
