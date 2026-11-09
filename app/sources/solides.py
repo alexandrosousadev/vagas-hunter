@@ -8,17 +8,25 @@ from .base import Job, client, html_to_text
 
 SEARCH_KEYWORDS = [
     "desenvolvedor",
+    "desenvolvedor-junior",
     "programador",
     "php",
     "java",
     "frontend",
+    "front-end",
+    "backend",
+    "back-end",
     "full-stack",
+    "fullstack",
     "react",
     "angular",
     "javascript",
+    "typescript",
     "node",
     "laravel",
+    "spring",
     "software",
+    "sistemas",
 ]
 
 
@@ -35,7 +43,7 @@ def _resolve_flight_refs(full_stream: str) -> dict[str, str]:
 
 
 def fetch(slug: str = "remoto") -> list[Job]:
-    cutoff_date = (datetime.now(timezone.utc) - timedelta(days=150)).strftime("%Y-%m-%d")
+    cutoff_date = "2026-01-01"
     found: dict[str, Job] = {}
 
     with client(timeout=20.0) as c:
@@ -72,19 +80,19 @@ def fetch(slug: str = "remoto") -> list[Job]:
                 if not items:
                     break
 
-                hit_old = False
                 for item in items:
                     jid = str(item.get("id") or "")
                     if not jid or jid in found:
                         continue
                     if item.get("isDisabled") or item.get("receivingResume") is False:
                         continue
+                    if item.get("currentState") and item.get("currentState") != "em_andamento":
+                        continue
                     comp_slug = (item.get("slug") or "").strip()
                     if comp_slug.startswith("desativado"):
                         continue
                     created_at = (item.get("createdAt") or "").strip()[:10]
                     if created_at and created_at < cutoff_date:
-                        hit_old = True
                         continue
                     if item.get("jobType") != "remoto" and not item.get("homeOffice"):
                         continue
@@ -141,7 +149,7 @@ def fetch(slug: str = "remoto") -> list[Job]:
                         remote=True,
                     )
 
-                if hit_old or page >= (data.get("totalPages") or 1):
+                if page >= (data.get("totalPages") or 1):
                     break
 
     return list(found.values())

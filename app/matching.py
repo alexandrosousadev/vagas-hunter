@@ -239,8 +239,16 @@ DESC_SENIOR_PLENO_RE = re.compile(
 )
 
 
+def _role_only(title: str) -> str:
+    """Remove o sufixo ' — Nome da Empresa' adicionado pelos coletores para avaliar apenas o cargo."""
+    if " — " in (title or ""):
+        return title.rsplit(" — ", 1)[0].strip()
+    return title or ""
+
+
 def title_ok(title: str, description: str = "") -> bool:
-    t = _norm(title).replace(".", " ").replace("-", " ")
+    role_title = _role_only(title)
+    t = _norm(role_title).replace(".", " ").replace("-", " ")
     if any(sub in t for sub in ALWAYS_EXCLUDE_SUBSTRINGS):
         return False
     # Faixas que incluem o nível I (ex.: "Níveis I & II", "I/II", "I a III", "Jr/Pl") aceitam júnior:
@@ -274,7 +282,8 @@ def career_match_ok(title: str, profile: dict | None = None) -> bool:
     """Garante que o título da vaga pertence à área profissional do currículo do usuário."""
     if not title_ok(title):
         return False
-    t = _norm(title).replace(".", " ").replace("-", " ")
+    role_title = _role_only(title)
+    t = _norm(role_title).replace(".", " ").replace("-", " ")
 
     p = profile or {}
     cargos_norm = " ".join(_norm(c) for c in p.get("cargos", []))

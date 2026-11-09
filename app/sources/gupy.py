@@ -11,6 +11,14 @@ from .base import Job, client
 DEFAULT_TERMS = [
     "Desenvolvedor Junior",
     "Desenvolvedor Trainee",
+    "Programador Junior",
+    "Desenvolvedor Full Stack Junior",
+    "Desenvolvedor Java Junior",
+    "Desenvolvedor PHP Junior",
+    "Desenvolvedor Front-end Junior",
+    "Desenvolvedor Back-end Junior",
+    "Desenvolvedor React Junior",
+    "Desenvolvedor Angular Junior",
     "Desenvolvedor Java",
     "Desenvolvedor PHP",
     "Desenvolvedor Angular",
@@ -18,12 +26,11 @@ DEFAULT_TERMS = [
     "Desenvolvedor React",
     "Desenvolvedor Front-end",
     "Desenvolvedor Back-end",
-    "Programador Junior",
 ]
 
 
 def _terms_from_profile() -> list[str]:
-    out: list[str] = []
+    out: list[str] = list(DEFAULT_TERMS)
     try:
         from .. import resume
         prof = resume.get_profile()
@@ -31,23 +38,14 @@ def _terms_from_profile() -> list[str]:
             r = role.strip()
             if r and r not in out:
                 out.append(r)
-        if prof.get("cargos") and prof.get("skills"):
-            base = prof["cargos"][0].split()[0]
-            for sk in (prof.get("skills") or [])[:5]:
-                q = f"{base} {sk}"
-                if q not in out:
-                    out.append(q)
     except Exception:
         pass
-    for d in DEFAULT_TERMS:
-        if d not in out:
-            out.append(d)
-    return out[:11]
+    return out[:18]
 
 
 def fetch(slug: str) -> list[Job]:
     terms = _terms_from_profile() if (not slug or slug in ("remoto", "default")) else [slug]
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=25)).strftime("%Y-%m-%d")
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=60)).strftime("%Y-%m-%d")
     seen_ids: set[int] = set()
     jobs: list[Job] = []
 

@@ -122,27 +122,30 @@ def _fetch_detail(c, job_id: str) -> tuple[str, int | None, bool, str, bool]:
 
 
 def _queries_from_profile() -> list[str]:
-    """Monta buscas dinâmicas no LinkedIn a partir dos cargos e skills do currículo ativo (sem exigir aspas literais)."""
+    """Monta buscas dinâmicas no LinkedIn priorizando queries Júnior e combinando com o currículo ativo."""
+    li_cfg = CFG.get("linkedin", {})
+    queries: list[str] = list(li_cfg.get("queries") or DEFAULT_QUERIES)
+    for extra in ("Desenvolvedor Junior", "Programador Junior", "Desenvolvedor PHP Junior", "Desenvolvedor Trainee"):
+        if extra not in queries:
+            queries.append(extra)
     try:
         from .. import resume
         prof = resume.get_profile()
     except Exception:
-        return []
+        return queries[:12]
     cargos = prof.get("cargos") or []
-    semelhantes = prof.get("cargos_semelhantes") or []
-    skills = prof.get("skills") or []
-    queries: list[str] = []
-    for role in (cargos + semelhantes)[:5]:
+    is_jr = (prof.get("senioridade") or "").lower() == "junior"
+    for role in cargos[:4]:
         r = role.strip()
-        if r and r not in queries:
+        if not r:
+            continue
+        if is_jr and "junior" not in r.lower() and "júnior" not in r.lower():
+            r_jr = f"{r} Junior"
+            if r_jr not in queries:
+                queries.append(r_jr)
+        if r not in queries:
             queries.append(r)
-    if cargos and skills:
-        main_role = cargos[0].split()[0]
-        for sk in skills[:3]:
-            q = f"{main_role} {sk}"
-            if q not in queries:
-                queries.append(q)
-    return queries[:7]
+    return queries[:13]
 
 
 def fetch(slug: str) -> list[Job]:
