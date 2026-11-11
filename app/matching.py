@@ -95,8 +95,6 @@ DEV_REQUIRED_WORDS = (
     "node",
     "javascript",
     "typescript",
-    "python",
-    "dotnet",
     "mobile",
     "android",
     "flutter",
@@ -223,6 +221,30 @@ NON_DEV_EXCLUDE_WORDS = (
     "game developer",
     "automacao",
     "automation",
+    "python",
+    "django",
+    "fastapi",
+    "flask",
+    "net",
+    "dotnet",
+    "asp net",
+    "aspnet",
+    "c#",
+    "csharp",
+    "delphi",
+    "elixir",
+    "golang",
+    "ruby",
+    "rails",
+    "kotlin",
+    "swift",
+    "ios",
+    "apple platforms",
+    "labvantage",
+    "lims",
+    "openstack",
+    "ceph",
+    "kernel",
 )
 
 
@@ -235,6 +257,7 @@ EXP_3PLUS_RE = re.compile(
 
 DESC_SENIOR_PLENO_RE = re.compile(
     r"(\b(?:nivel|labels|detalhes)\s*[:|-]?\s*(?:[^\n]{0,25}\b)?(?:senior|pleno|especialista)\b"
+    r"|\b(?:pleno|senior)\s+home office\b"
     r"|senior-software-engineer"
     r"|\b(?:software engineer|developer|engineer|desenvolvedor)\s+(?:ii|iii|2|3)\b"
     r"|\ba partir de r\$\s*(?:[89]|1\d)\.\d{3}"
@@ -260,7 +283,10 @@ def title_ok(title: str, description: str = "") -> bool:
     # Faixas que incluem o nível I (ex.: "Níveis I & II", "I/II", "I a III", "Jr/Pl") aceitam júnior:
     # remove a faixa antes de checar as palavras proibidas (ii, iii, pleno...).
     t_check = LEVEL_RANGE_RE.sub(" junior ", t)
-    extra_words = ["pcd", "specialist", "especialista", "intermediate", "middle", "midlevel", "pleno", "mid"]
+    extra_words = [
+        "pcd", "specialist", "especialista", "intermediate", "middle", "midlevel", "pleno", "peno", "mid",
+        "net", "dotnet", "c#", "csharp", "python", "django", "fastapi", "flask", "delphi", "elixir", "golang", "kotlin", "swift",
+    ]
     for w in list(CFG.get("excluir_titulos", [])) + extra_words:
         if _has_word(t_check, w.replace(".", "").replace("-", " ")):
             return False
@@ -273,6 +299,17 @@ def title_ok(title: str, description: str = "") -> bool:
                 "vaga exclusiva para pcd",
                 "exclusiva pcd",
                 "affirmative position for people with disabilities",
+            )
+        ):
+            return False
+        # Exclui vagas cujo backend seja .NET/C# ou Python quando não forem vagas de PHP/Java
+        has_php_java = any(_has_word(f"{t} {d}", w) for w in ("php", "laravel", "yii", "yii2", "java", "spring"))
+        if not has_php_java and (
+            ".net" in d
+            or "c#" in d
+            or any(
+                _has_word(d.replace(".", " "), w)
+                for w in ("csharp", "dotnet", "asp net", "entity framework", "python", "django", "fastapi", "flask", "delphi")
             )
         ):
             return False

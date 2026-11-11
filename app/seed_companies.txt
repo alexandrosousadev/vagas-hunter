@@ -24,7 +24,6 @@ github:androiddevbr/vagas          GitHub Android/Mobile BR
 github:qa-brasil/vagas             GitHub QA-Brasil
 github:datascience-br/vagas        GitHub DataScience-BR
 github:devops-br/vagas             GitHub DevOps-BR
-github:dotnetdevbr/vagas           GitHub DotNet-BR
 github:flutter-brazil/vagas        GitHub Flutter-Brazil
 
 # --- Empresas Diretas (Greenhouse / Ashby / Lever / InHire) ---

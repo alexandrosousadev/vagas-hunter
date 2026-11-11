@@ -13,7 +13,6 @@ DEFAULT_PATHS = [
     "jobs-react",
     "jobs-javascript",
     "jobs-node-js",
-    "jobs-python",
 ]
 
 

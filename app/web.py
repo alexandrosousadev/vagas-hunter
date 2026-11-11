@@ -85,7 +85,7 @@ def _query_jobs(
         SELECT
             j.id, j.company_id, j.title, j.url, j.location, j.description,
             j.posted_at, j.first_seen, j.last_seen, j.open,
-            uj.stage1 AS stage1,
+            COALESCE(uj.stage1, j.stage1, 0.65) AS stage1,
             uj.score AS score,
             uj.reason AS reason,
             uj.missing AS missing,
@@ -151,7 +151,7 @@ def _get_single_user_job(con, user_id: int, job_id: str):
         SELECT
             j.id, j.company_id, j.title, j.url, j.location, j.description,
             j.posted_at, j.first_seen, j.last_seen, j.open,
-            uj.stage1 AS stage1,
+            COALESCE(uj.stage1, j.stage1, 0.65) AS stage1,
             uj.score AS score,
             uj.reason AS reason,
             uj.missing AS missing,

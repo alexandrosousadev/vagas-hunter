@@ -13,8 +13,8 @@ LISTINGS = [
     "vagas-estagio-junior.php",
     "vagas-desenvolvedor-sistemas.php",
     "vagas-full-stack.php",
-    "vagas-python.php",
-    "vagas-inteligencia-artificial.php",
+    "vagas-home-office.php?Plataforma=php",
+    "vagas-home-office.php?Plataforma=java",
 ]
 MAX_PAGES = 4
 
@@ -36,7 +36,8 @@ def fetch(slug: str = "default") -> list[Job]:
     with client() as c:
         for path in LISTINGS:
             for page in range(1, MAX_PAGES + 1):
-                url = BASE + path + (f"?pagina={page}" if page > 1 else "")
+                sep = "&" if "?" in path else "?"
+                url = BASE + path + (f"{sep}pagina={page}" if page > 1 else "")
                 try:
                     r = c.get(url)
                     if r.status_code != 200:
@@ -56,7 +57,12 @@ def fetch(slug: str = "default") -> list[Job]:
                     full = BASE + href.lstrip("/")
                     if full in candidates or not title:
                         continue
-                    if "home office" not in meta.lower() and "remot" not in meta.lower():
+                    meta_low = meta.lower()
+                    if "home office" not in meta_low and "remot" not in meta_low:
+                        continue
+                    has_jr = any(k in meta_low for k in ("junior", "júnior", "estagio", "estágio", "trainee"))
+                    has_sr_pl = any(k in meta_low for k in ("pleno", "senior", "sênior", "especialista"))
+                    if has_sr_pl and not has_jr:
                         continue
                     if not matching.career_match_ok(title) or not matching.title_ok(title):
                         continue
@@ -76,7 +82,14 @@ def fetch(slug: str = "default") -> list[Job]:
             desc = html_to_text(jp.get("description") or "")
             if not desc:
                 continue
-            if not matching.title_ok(title, desc):
+            full_desc = f"{meta}\n{desc}"
+            if not matching.title_ok(title, full_desc):
+                continue
+            norm_desc = matching._norm(desc)
+            if any(
+                bad in norm_desc
+                for bad in ("modelo hibrido", "atuacao hibrida", "idas pontuais ao escritorio", "vaga presencial", "atuacao presencial")
+            ):
                 continue
             org = (jp.get("hiringOrganization") or {}).get("name") or ""
             full_title = f"{title} — {org}" if org and org.lower() not in title.lower() else title
