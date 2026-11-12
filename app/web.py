@@ -220,6 +220,26 @@ SOURCE_LABELS = {
 }
 
 
+@app.get("/apinfo/{cod}", response_class=HTMLResponse)
+def apinfo_redirect(cod: str):
+    safe_cod = re.sub(r"[^0-9]", "", cod or "")
+    html = f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><title>Abrindo vaga {safe_cod} no APInfo...</title></head>
+<body style="background:#0f172a;color:#e2e8f0;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+  <form id="f" method="POST" action="https://www.apinfo.com/apinfo/inc/list4.cfm">
+    <input type="hidden" name="keyw" value="{safe_cod}">
+    <input type="hidden" name="onde" value="2">
+    <input type="hidden" name="andor" value="2">
+    <noscript><button type="submit">Clique aqui para abrir a vaga {safe_cod} no APInfo</button></noscript>
+  </form>
+  <p>Redirecionando para a vaga <strong>{safe_cod}</strong> no APInfo...</p>
+  <script>document.getElementById('f').submit();</script>
+</body>
+</html>"""
+    return HTMLResponse(html)
+
+
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request, erro: str = Query("")):
     user = _current_user(request)

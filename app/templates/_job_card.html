@@ -11,6 +11,7 @@
   {% set badge_bg = "bg-slate-800 text-slate-400 border-slate-700" %}
 {% endif %}
 
+{% set open_url = ('/apinfo/' ~ j.url.split('=')[-1]) if (j.company_ats == 'apinfo' and '=' in j.url) else j.url %}
 <div id="job-{{ j.id }}" class="rounded-xl border border-slate-800 bg-slate-900/70 p-4 transition hover:border-slate-700">
   <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
     <div class="flex items-start gap-3.5 min-w-0">
@@ -41,7 +42,7 @@
         </div>
 
         <h3 class="mt-1 text-base font-semibold text-slate-100 leading-snug">
-          <a href="{{ j.url }}" target="_blank" rel="noopener" class="hover:text-indigo-400 hover:underline">
+          <a href="{{ open_url }}" target="_blank" rel="noopener" class="hover:text-indigo-400 hover:underline">
             {{ j.title }} ↗
           </a>
         </h3>
@@ -110,7 +111,7 @@
             <span id="spin-{{ j.id }}" class="htmx-indicator animate-spin">⏳</span>
           </button>
         {% endif %}
-        <a href="{{ j.url }}" target="_blank" rel="noopener"
+        <a href="{{ open_url }}" target="_blank" rel="noopener"
            class="rounded-lg bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-500">
           Abrir vaga ↗
         </a>
