@@ -6,6 +6,7 @@ from urllib.parse import quote
 
 from selectolax.lexbor import LexborHTMLParser as HTMLParser
 
+from ..config import CFG
 from .base import Job, client
 
 DEFAULT_TERMS = [
@@ -51,7 +52,8 @@ def _terms_from_profile() -> list[str]:
 
 def fetch(slug: str) -> list[Job]:
     terms = _terms_from_profile() if (not slug or slug in ("remoto", "default")) else [slug]
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=60)).strftime("%Y-%m-%d")
+    days = int(CFG.get("gupy", {}).get("ultimos_dias", 5))
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
     seen_ids: set[int] = set()
     jobs: list[Job] = []
 

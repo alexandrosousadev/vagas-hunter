@@ -37,6 +37,10 @@ linkedin:
   ultimos_dias: 5            # só vagas frescas (últimos 5 dias)
   max_candidatos: 100        # descarta vagas com +100 candidatos
   max_por_busca: 25
+
+# Filtro para o Portal Gupy (evita vagas antigas já lotadas com +100 candidatos)
+gupy:
+  ultimos_dias: 5            # só vagas recém-abertas (últimos 5 dias)
   queries:
     - 'Desenvolvedor Java Junior'
     - 'Desenvolvedor PHP'

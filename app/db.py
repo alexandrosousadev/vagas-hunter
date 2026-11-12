@@ -242,6 +242,16 @@ def save_jobs(con, company_id: int, jobs: list, fetched_any: bool = True) -> int
             """,
             (company_id, cutoff_agg),
         )
+        if ats == "gupy":
+            cutoff_gupy = (datetime.now(timezone.utc) - timedelta(days=5)).strftime("%Y-%m-%d")
+            con.execute(
+                """
+                UPDATE jobs SET open=0
+                WHERE company_id=? AND open=1 AND COALESCE(posted_at, '') != '' AND posted_at < ?
+                  AND COALESCE(status, 'nova') NOT IN ('interessa', 'candidatei')
+                """,
+                (company_id, cutoff_gupy),
+            )
 
     con.execute("UPDATE companies SET last_fetched=?, last_error=NULL WHERE id=?", (ts, company_id))
     con.commit()
