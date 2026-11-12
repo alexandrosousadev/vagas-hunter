@@ -19,6 +19,12 @@ DEFAULT_TERMS = [
     "Desenvolvedor Back-end Junior",
     "Desenvolvedor React Junior",
     "Desenvolvedor Angular Junior",
+    "Desenvolvedor React Native",
+    "Desenvolvedor Mobile",
+    "Analista de Suporte Junior",
+    "Suporte Tecnico",
+    "Help Desk",
+    "Service Desk",
     "Desenvolvedor Java",
     "Desenvolvedor PHP",
     "Desenvolvedor Angular",
@@ -40,7 +46,7 @@ def _terms_from_profile() -> list[str]:
                 out.append(r)
     except Exception:
         pass
-    return out[:18]
+    return out[:24]
 
 
 def fetch(slug: str) -> list[Job]:

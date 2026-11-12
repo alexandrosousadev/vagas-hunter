@@ -22,8 +22,12 @@ DEFAULT_QUERIES = [
     "Desenvolvedor Angular",
     "Desenvolvedor Full Stack Junior",
     "Desenvolvedor React Junior",
+    "Desenvolvedor React Native",
+    "Desenvolvedor Mobile Junior",
     "Desenvolvedor Backend Junior",
     "Desenvolvedor Front-end Junior",
+    "Analista de Suporte Junior",
+    "Suporte Técnico TI",
     "Java Angular",
     "PHP Laravel",
 ]

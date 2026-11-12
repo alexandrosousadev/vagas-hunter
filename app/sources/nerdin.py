@@ -13,6 +13,8 @@ LISTINGS = [
     "vagas-estagio-junior.php",
     "vagas-desenvolvedor-sistemas.php",
     "vagas-full-stack.php",
+    "vagas-mobile.php",
+    "vagas-suporte-tecnico.php",
     "vagas-home-office.php?Plataforma=php",
     "vagas-home-office.php?Plataforma=java",
 ]

@@ -1,13 +1,17 @@
 from . import (
+    apinfo,
     ashby,
     catho,
     eudev,
+    geekhunter,
     generic_page,
     github_vagas,
     greenhouse,
     gupy,
+    infojobs,
     inhire,
     jobicy,
+    jobs99,
     lever,
     linkedin,
     mosyle,
@@ -47,6 +51,10 @@ EXTRA_SOURCES = {
     "solides": solides,
     "nerdin": nerdin,
     "recrutei": recrutei,
+    "apinfo": apinfo,
+    "infojobs": infojobs,
+    "geekhunter": geekhunter,
+    "99jobs": jobs99,
 }
 
 

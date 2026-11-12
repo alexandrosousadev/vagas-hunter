@@ -14,9 +14,13 @@ DEFAULT_SLUGS = [
     "desenvolvedor-php-home-office",
     "desenvolvedor-angular-home-office",
     "desenvolvedor-react-home-office",
+    "desenvolvedor-react-native-home-office",
+    "desenvolvedor-mobile-home-office",
     "desenvolvedor-full-stack-home-office",
     "desenvolvedor-front-end-home-office",
     "programador-home-office",
+    "analista-de-suporte-home-office",
+    "suporte-tecnico-home-office",
 ]
 
 OLD_MONTH_RE = re.compile(r"(?:Publicada|Atualizada)\s+em\s+\d{1,2}/0[1-9]\b", re.I)

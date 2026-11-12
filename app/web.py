@@ -212,6 +212,10 @@ SOURCE_LABELS = {
     "solides": "Sólides (PMEs / Software Houses)",
     "recrutei": "Recrutei (PMEs / Software Houses)",
     "nerdin": "Nerdin (TI Home Office)",
+    "apinfo": "APInfo (TI Home Office)",
+    "infojobs": "InfoJobs (Home Office)",
+    "geekhunter": "GeekHunter (TI Remoto)",
+    "99jobs": "99jobs (Remoto)",
     "generic": "Site Próprio da Empresa",
 }
 

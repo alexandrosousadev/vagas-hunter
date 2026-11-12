@@ -11,6 +11,8 @@ DEFAULT_PATHS = [
     "jobs-php",
     "jobs-angular",
     "jobs-react",
+    "jobs-react-native",
+    "jobs-mobile",
     "jobs-javascript",
     "jobs-node-js",
 ]

@@ -19,6 +19,8 @@ SEARCH_KEYWORDS = [
     "full-stack",
     "fullstack",
     "react",
+    "react-native",
+    "mobile",
     "angular",
     "javascript",
     "typescript",
@@ -27,6 +29,9 @@ SEARCH_KEYWORDS = [
     "spring",
     "software",
     "sistemas",
+    "suporte-tecnico",
+    "analista-de-suporte",
+    "help-desk",
 ]
 
 

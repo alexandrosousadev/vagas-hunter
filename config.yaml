@@ -19,8 +19,8 @@ ollama:
 
 # Complementa o perfil que a IA extrai do currículo (opcional)
 perfil_extra:
-  cargos: [Desenvolvedor Full Stack, Desenvolvedor Backend, Desenvolvedor PHP, Desenvolvedor Java, Desenvolvedor Front-end]
-  skills: [PHP, Java, Angular, React, React Native, JavaScript, MySQL, PostgreSQL, Git, APIs REST]
+  cargos: [Desenvolvedor Full Stack, Desenvolvedor Backend, Desenvolvedor PHP, Desenvolvedor Java, Desenvolvedor Front-end, Desenvolvedor Mobile, Desenvolvedor React Native, Analista de Suporte]
+  skills: [PHP, Java, Angular, React, React Native, Mobile, JavaScript, TypeScript, MySQL, PostgreSQL, Git, APIs REST, Suporte Técnico]
   senioridade: junior                    # estagio | junior | pleno | senior
 
 # Títulos com estas palavras são descartados sem gastar IA
@@ -43,8 +43,12 @@ linkedin:
     - 'Desenvolvedor Angular'
     - 'Desenvolvedor Full Stack Junior'
     - 'Desenvolvedor React Junior'
+    - 'Desenvolvedor React Native'
+    - 'Desenvolvedor Mobile Junior'
     - 'Desenvolvedor Backend Junior'
     - 'Desenvolvedor Front-end Junior'
+    - 'Analista de Suporte Junior'
+    - 'Suporte Técnico TI'
     - 'Java Angular'
     - 'PHP Laravel'
 

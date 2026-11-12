@@ -14,8 +14,12 @@ SEARCH_KEYWORDS = [
     "front-end",
     "backend",
     "react",
+    "react native",
+    "mobile",
     "angular",
     "laravel",
+    "suporte",
+    "help desk",
 ]
 
 

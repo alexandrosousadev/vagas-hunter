@@ -10,9 +10,13 @@ SEARCH_KEYWORDS = [
     "java",
     "angular",
     "react",
+    "react native",
+    "mobile",
     "frontend",
     "full stack",
     "developer",
+    "suporte",
+    "support",
 ]
 
 
