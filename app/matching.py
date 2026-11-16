@@ -191,6 +191,10 @@ NON_DEV_EXCLUDE_WORDS = (
     "office assistant",
     "contact center",
     "cobol",
+    "mainframe",
+    "jcl",
+    "cics",
+    "vsam",
     "abap",
     "sap",
     "rpa",
@@ -327,6 +331,7 @@ def title_ok(title: str, description: str = "") -> bool:
     extra_words = [
         "pcd", "specialist", "especialista", "intermediate", "middle", "midlevel", "pleno", "peno", "mid",
         "net", "dotnet", "c#", "csharp", "python", "django", "fastapi", "flask", "delphi", "elixir", "golang", "kotlin", "swift",
+        "cobol", "mainframe", "abap",
     ]
     for w in list(CFG.get("excluir_titulos", [])) + extra_words:
         if _has_word(t_check, w.replace(".", "").replace("-", " ")):
@@ -342,6 +347,9 @@ def title_ok(title: str, description: str = "") -> bool:
                 "affirmative position for people with disabilities",
             )
         ):
+            return False
+        # Exclui vagas de Mainframe / COBOL / ABAP diretamente pela descrição
+        if any(_has_word(d.replace(".", " "), w) for w in ("cobol", "mainframe", "jcl", "cics", "vsam", "abap")):
             return False
         # Exclui vagas cujo backend seja .NET/C# ou Python quando não forem vagas de PHP/Java
         has_php_java = any(_has_word(f"{t} {d}", w) for w in ("php", "laravel", "yii", "yii2", "java", "spring"))
