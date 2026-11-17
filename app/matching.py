@@ -35,7 +35,8 @@ LEVEL_RANGE_RE = re.compile(
 
 
 def _norm(s: str) -> str:
-    s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode()
+    s = (s or "").replace("–", "-").replace("—", "-")
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
     return re.sub(r"\s+", " ", s.lower())
 
 
@@ -304,10 +305,11 @@ NON_DEV_EXCLUDE_WORDS = (
 
 
 EXP_3PLUS_RE = re.compile(
-    r"(\b(?:[3-9]|1[0-5])\s*\+?\s*(?:a\s*\d+\s*)?(?:anos?|years?)\s+(?:de\s+|of\s+|in\s+|em\s+)?"
-    r"(?:experiencia|experiencias|experience|atuacao|desenvolvimento|software|front|back|mobile|java|php|design)"
-    r"|(?:minimo|mais|acima|pelo menos|at least|minimum|experiencia:?)\s*(?:de\s+|of\s+)?(?:[3-9]|1[0-5])\s*(?:\+|a\s*\d+)?\s*(?:anos?|years?)"
-    r"|\b(?:[3-9]|1[0-5])\+\s*(?:anos?|years?))"
+    r"(\b(?:0?[3-9]|1[0-5])\s*(?:\+|-\s*\d+\s*\+?)?\s*(?:a\s*\d+\s*)?(?:anos?|years?)\s+(?:de\s+|of\s+|in\s+|em\s+)?"
+    r"(?:[a-z]+\s+){0,3}(?:experiencia|experiencias|experience|atuacao|desenvolvimento|software|front|back|mobile|java|php|design|production|professional|suporte)"
+    r"|(?:minimo|mais|acima|pelo menos|at least|minimum|experiencia(?:\s+desejada)?\s*:?)\s*(?:de\s+|of\s+|entre\s+)?(?:0?[3-9]|1[0-5])\s*(?:\+|a\s*\d+|e\s*\d+)?\s*(?:anos?|years?)"
+    r"|\bentre\s+(?:0?[3-9]|1[0-5])\s+e\s+\d+\s*(?:anos?|years?)"
+    r"|\b(?:0?[3-9]|1[0-5])\+\s*(?:anos?|years?))"
 )
 
 DESC_SENIOR_PLENO_RE = re.compile(
@@ -340,6 +342,7 @@ def title_ok(title: str, description: str = "") -> bool:
     t_check = LEVEL_RANGE_RE.sub(" junior ", t)
     extra_words = [
         "pcd", "specialist", "especialista", "intermediate", "middle", "midlevel", "pleno", "peno", "mid",
+        "estagio", "estagiario", "intern", "internship",
         "net", "dotnet", "c#", "csharp", "python", "django", "fastapi", "flask", "delphi", "elixir", "golang", "kotlin", "swift",
         "cobol", "mainframe", "abap",
     ]
@@ -368,7 +371,7 @@ def title_ok(title: str, description: str = "") -> bool:
             or "c#" in d
             or any(
                 _has_word(d.replace(".", " "), w)
-                for w in ("csharp", "dotnet", "asp net", "entity framework", "python", "django", "fastapi", "flask", "delphi")
+                for w in ("csharp", "dotnet", "asp net", "entity framework", "python", "django", "fastapi", "flask", "delphi", "golang", "elixir", "ruby on rails")
             )
         ):
             return False
