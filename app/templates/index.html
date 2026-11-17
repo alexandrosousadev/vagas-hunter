@@ -115,9 +115,9 @@
     <form id="filters-form" hx-get="/" hx-target="#jobs-container" hx-trigger="submit, change"
           class="mt-5 rounded-xl border border-slate-800 bg-slate-900/80 p-4 space-y-3">
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-12">
-        <div class="sm:col-span-3">
+        <div class="sm:col-span-2">
           <label class="block text-[11px] font-medium text-slate-400 mb-1">Buscar termo (cargo, skill, empresa)</label>
-          <input type="text" name="q" value="{{ filters.q }}" placeholder="Ex: Java, Angular, PHP, Junior..."
+          <input type="text" name="q" value="{{ filters.q }}" placeholder="Ex: Java, Angular, PHP..."
                  hx-get="/" hx-target="#jobs-container" hx-trigger="keyup changed delay:350ms"
                  hx-include="closest form"
                  class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none" />
@@ -162,13 +162,21 @@
           </select>
         </div>
 
-        <div class="sm:col-span-2">
+        <div class="sm:col-span-1">
           <label class="block text-[11px] font-medium text-slate-400 mb-1">Nota mínima IA</label>
-          <select id="score-select" name="min_score" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100">
-            <option value="0" {{ 'selected' if filters.min_score == 0 }}>Qualquer nota</option>
-            <option value="70" {{ 'selected' if filters.min_score == 70 }}>≥ 70 (Alta aderência)</option>
-            <option value="50" {{ 'selected' if filters.min_score == 50 }}>≥ 50 (Média/Alta)</option>
+          <select id="score-select" name="min_score" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100">
+            <option value="0" {{ 'selected' if filters.min_score == 0 }}>Qualquer</option>
+            <option value="70" {{ 'selected' if filters.min_score == 70 }}>≥ 70</option>
+            <option value="50" {{ 'selected' if filters.min_score == 50 }}>≥ 50</option>
             <option value="30" {{ 'selected' if filters.min_score == 30 }}>≥ 30</option>
+          </select>
+        </div>
+
+        <div class="sm:col-span-2">
+          <label class="block text-[11px] font-medium text-slate-400 mb-1">Ordenar por</label>
+          <select id="sort-select" name="sort" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100">
+            <option value="score" {{ 'selected' if filters.sort != 'recentes' }}>🎯 Maior aderência</option>
+            <option value="recentes" {{ 'selected' if filters.sort == 'recentes' }}>🆕 Novas vagas primeiro</option>
           </select>
         </div>
 
@@ -183,7 +191,11 @@
 
       <!-- Atalhos rápidos por Fonte -->
       <div class="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-800/80 text-xs">
-        <span class="text-slate-400 mr-1">Fonte rápida:</span>
+        <span class="text-slate-400 mr-1">Atalhos:</span>
+        <button type="button" onclick="setSort('recentes')"
+                class="rounded-full px-2.5 py-1 transition border border-emerald-500/40 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/30">
+          🆕 Novas vagas primeiro
+        </button>
         <button type="button" onclick="setSource('')"
                 class="rounded-full px-2.5 py-1 transition border border-slate-700 bg-slate-800/70 text-slate-200 hover:bg-indigo-600/30 hover:border-indigo-500/50">
           Todas
@@ -244,6 +256,15 @@
 
     function setSource(val) {
       const sel = document.getElementById('ats-select');
+      const form = document.getElementById('filters-form');
+      if (sel) {
+        sel.value = val;
+        if (form) htmx.trigger(form, 'submit');
+      }
+    }
+
+    function setSort(val) {
+      const sel = document.getElementById('sort-select');
       const form = document.getElementById('filters-form');
       if (sel) {
         sel.value = val;

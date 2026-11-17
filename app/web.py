@@ -80,6 +80,7 @@ def _query_jobs(
     company_id: int = 0,
     ats: str = "",
     only_scored: bool = False,
+    sort: str = "score",
 ):
     sql = """
         SELECT
@@ -134,14 +135,25 @@ def _query_jobs(
         sql += " AND (j.title LIKE ? OR c.name LIKE ? OR j.description LIKE ? OR COALESCE(uj.reason, '') LIKE ?)"
         params.extend([term, term, term, term])
 
-    sql += """
-        ORDER BY
-            CASE WHEN uj.score IS NOT NULL THEN 0 ELSE 1 END,
-            COALESCE(uj.score, 0) DESC,
-            COALESCE(uj.stage1, 0) DESC,
-            j.first_seen DESC
-        LIMIT 250
-    """
+    if sort == "recentes":
+        sql += """
+            ORDER BY
+                substr(j.first_seen, 1, 10) DESC,
+                COALESCE(NULLIF(j.posted_at, ''), substr(j.first_seen, 1, 10)) DESC,
+                j.first_seen DESC,
+                COALESCE(uj.score, 0) DESC,
+                COALESCE(uj.stage1, j.stage1, 0) DESC
+            LIMIT 250
+        """
+    else:
+        sql += """
+            ORDER BY
+                CASE WHEN uj.score IS NOT NULL THEN 0 ELSE 1 END,
+                COALESCE(uj.score, 0) DESC,
+                COALESCE(uj.stage1, 0) DESC,
+                j.first_seen DESC
+            LIMIT 250
+        """
     return con.execute(sql, params).fetchall()
 
 
@@ -327,6 +339,7 @@ def index(
     company_id: int = Query(0),
     ats: str = Query(""),
     only_scored: bool = Query(False),
+    sort: str = Query("score"),
 ):
     user = _current_user(request)
     if not user:
@@ -335,7 +348,7 @@ def index(
 
     con = db.connect()
     jobs = _query_jobs(
-        con, user_id=user_id, q=q, status=status, min_score=min_score, company_id=company_id, ats=ats, only_scored=only_scored
+        con, user_id=user_id, q=q, status=status, min_score=min_score, company_id=company_id, ats=ats, only_scored=only_scored, sort=sort
     )
     stats = _stats(con, user_id=user_id)
     comps = con.execute(
@@ -403,6 +416,7 @@ def index(
             "company_id": company_id,
             "ats": ats,
             "only_scored": only_scored,
+            "sort": sort,
         },
     }
     if request.headers.get("HX-Request") == "true" and request.headers.get("HX-Target") == "jobs-container":
