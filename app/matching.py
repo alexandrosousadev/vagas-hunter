@@ -197,6 +197,19 @@ NON_DEV_EXCLUDE_WORDS = (
     "cics",
     "vsam",
     "abap",
+    "as/400",
+    "as400",
+    "rpg",
+    "iseries",
+    "openedge",
+    "clipper",
+    "foxpro",
+    "powerbuilder",
+    "vb6",
+    "genexus",
+    "servicenow",
+    "splunk",
+    "itsm",
     "sap",
     "rpa",
     "power automate",
@@ -344,7 +357,7 @@ def title_ok(title: str, description: str = "") -> bool:
         "pcd", "specialist", "especialista", "intermediate", "middle", "midlevel", "pleno", "peno", "mid",
         "estagio", "estagiario", "intern", "internship",
         "net", "dotnet", "c#", "csharp", "python", "django", "fastapi", "flask", "delphi", "elixir", "golang", "kotlin", "swift",
-        "cobol", "mainframe", "abap",
+        "cobol", "mainframe", "abap", "as400", "as 400", "rpg", "iseries", "openedge", "powerbuilder", "vb6", "genexus",
     ]
     for w in list(CFG.get("excluir_titulos", [])) + extra_words:
         if _has_word(t_check, w.replace(".", "").replace("-", " ")):
@@ -361,8 +374,17 @@ def title_ok(title: str, description: str = "") -> bool:
             )
         ):
             return False
-        # Exclui vagas de Mainframe / COBOL / ABAP diretamente pela descrição
-        if any(_has_word(d.replace(".", " "), w) for w in ("cobol", "mainframe", "jcl", "cics", "vsam", "abap")):
+        # Exclui vagas de Mainframe / COBOL / ABAP / AS400 / RPG / ITSM pesado diretamente pela descrição
+        if any(
+            _has_word(d.replace(".", " ").replace("/", " "), w)
+            for w in (
+                "cobol", "mainframe", "jcl", "cics", "vsam", "abap",
+                "as400", "as 400", "rpg", "iseries", "openedge", "powerbuilder", "vb6", "genexus",
+                "servicenow", "splunk", "itsm",
+            )
+        ):
+            return False
+        if any(p in d for p in ("ingles avancado obrigatorio", "ingles fluente obrigatorio")):
             return False
         # Exclui vagas cujo backend seja .NET/C# ou Python quando não forem vagas de PHP/Java
         has_php_java = any(_has_word(f"{t} {d}", w) for w in ("php", "laravel", "yii", "yii2", "java", "spring"))
